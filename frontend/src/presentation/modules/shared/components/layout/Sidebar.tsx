@@ -17,7 +17,7 @@ function Sidebar() {
     [Role.ADMIN]: [
       { label: "Dashboard", path: "/dashboard", icon: "📊" },
       { label: "Gestionar Usuarios", path: "/usuarios", icon: "👥" },
-      { label: "Ver Postulantes", path: "/postulantes-admin", icon: "📋" },
+      { label: "Gestión de Postulantes", path: "/postulantes", icon: "📋" },
       { label: "Gestionar Visitas", path: "/reportes", icon: "📑" },
       { label: "Configurar Programas", path: "/programas", icon: "⚙️" },
     ],

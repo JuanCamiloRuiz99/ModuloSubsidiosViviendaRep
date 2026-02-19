@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../../shared/components/layout/MainLayout";
-import ProgramDetails from "../components/ProgramDetails";
+import { ProgramDetails } from "../components";
 
 function ProgramasPage() {
   const navigate = useNavigate();

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import MainLayout from "../../shared/components/layout/MainLayout";
-import ProgramCreationForm from "../components/ProgramCreationForm";
+import { ProgramCreationForm } from "../components";
 import ConfirmationModal from "../../shared/components/modals/ConfirmationModal";
 
 function CreateProgramPage() {

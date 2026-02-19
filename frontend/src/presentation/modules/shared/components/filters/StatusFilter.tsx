@@ -1,7 +1,7 @@
 interface StatusFilterProps {
   statuses: { label: string; count: number; id: string }[];
-  activeStatus: string | null;
-  onStatusChange: (statusId: string | null) => void;
+  activeStatus: string;
+  onStatusChange: (statusId: string) => void;
   label?: string;
 }
 
@@ -18,7 +18,7 @@ function StatusFilter({
         {statuses.map((status) => (
           <button
             key={status.id}
-            onClick={() => onStatusChange(activeStatus === status.id ? null : status.id)}
+            onClick={() => onStatusChange(status.id)}
             className={`px-4 py-2 rounded-lg font-semibold transition-all ${
               activeStatus === status.id
                 ? `ring-2 ring-offset-2 ${getStatusStyles(status.id).activeBg}`
@@ -53,7 +53,7 @@ function getStatusStyles(statusId: string) {
       text: "text-yellow-800",
       activeBg: "ring-yellow-500 bg-yellow-100",
     },
-    inhabitilitados: {
+    inhabilitados: {
       bg: "bg-red-100",
       text: "text-red-800",
       activeBg: "ring-red-500 bg-red-100",

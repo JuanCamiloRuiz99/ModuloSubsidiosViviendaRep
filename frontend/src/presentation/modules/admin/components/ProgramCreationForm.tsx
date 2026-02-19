@@ -1,15 +1,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { programSchema, type ProgramFormData } from "../schemas/programSchema";
-import { useState } from "react";
+import { useCreatePrograma } from "../../../../infraestructure/hooks";
+import { RESPONSABLE_ENTITIES } from "../constants/programConstants";
 
 interface ProgramCreationFormProps {
   onSuccess: (programCode: string) => void;
 }
 
 function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const {
     register,
     handleSubmit,
@@ -19,35 +18,23 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
     resolver: zodResolver(programSchema),
   });
 
-  // Generar código automático
-  const generateProgramCode = (): string => {
-    const year = new Date().getFullYear();
-    const random = Math.floor(Math.random() * 10000)
-      .toString()
-      .padStart(4, "0");
-    return `${year}BS${random}`;
-  };
-
-  const programCode = generateProgramCode();
+  const createMutation = useCreatePrograma();
 
   const onSubmit = async (data: ProgramFormData) => {
-    setIsSubmitting(true);
-    // Simular delay de API
-    setTimeout(() => {
-      console.log("Programa creado:", { ...data, codigo: programCode });
-      reset();
-      onSuccess(programCode);
-      setIsSubmitting(false);
-    }, 500);
+    createMutation.mutate(
+      {
+        nombre: data.nombre,
+        descripcion: data.descripcion,
+        entidad_responsable: data.entidadResponsable,
+      },
+      {
+        onSuccess: (response) => {
+          reset();
+          onSuccess(response.codigo_programa);
+        },
+      }
+    );
   };
-
-  const entities = [
-    "Secretaría General",
-    "Alcaldía de Popayán",
-    "Secretaría de Desarrollo Social",
-    "Secretaría de Hacienda",
-    "Secretaría de Infraestructura",
-  ];
 
   return (
     <form
@@ -108,7 +95,7 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
         >
           <option value="">Seleccionar entidad</option>
-          {entities.map((entity) => (
+          {RESPONSABLE_ENTITIES.map((entity) => (
             <option key={entity} value={entity}>
               {entity}
             </option>
@@ -128,7 +115,7 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
         </label>
         <input
           type="text"
-          value={programCode}
+          value="Se genera automáticamente"
           disabled
           className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
         />
@@ -146,10 +133,10 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
       <div className="flex justify-center">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={createMutation.isPending}
           className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-8 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? "Creando Programa..." : "Crear Programa"}
+          {createMutation.isPending ? "Creando Programa..." : "Crear Programa"}
         </button>
       </div>
     </form>

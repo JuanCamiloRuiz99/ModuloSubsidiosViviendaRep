@@ -47,3 +47,5 @@ Invalidar queries después de mutaciones.
 Separar lógica API en /services.
 
 Trabajar con una arquitectura hexagonal
+
+La base de datos es postgreSQL

@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
+import ActionIconButton from "../../shared/components/buttons/ActionIconButton";
 
 interface ProgramCardProps {
+  id: string;
   title: string;
   description: string;
   status: "Activo" | "Borrador" | "Inhabilitado";
-  stage: string;
   entity: string;
   programCode: string;
   children: ReactNode;
@@ -12,13 +13,18 @@ interface ProgramCardProps {
   statusBgColor: string;
   statusColor: string;
   statusDot: string;
+  onActionClick?: () => void;
 }
 
+/**
+ * Tarjeta de programa reutilizable
+ * Muestra información del programa con estado, entidad y código
+ * Soporta acciones personalizadas mediante children
+ */
 function ProgramCard({
   title,
   description,
   status,
-  stage,
   entity,
   programCode,
   children,
@@ -26,30 +32,39 @@ function ProgramCard({
   statusBgColor,
   statusColor,
   statusDot,
+  onActionClick,
 }: ProgramCardProps) {
   return (
     <div
-      className={`bg-white p-6 rounded-lg shadow-md border-2 ${borderColor}`}
+      className={`relative bg-white p-6 rounded-lg shadow-md border-2 ${borderColor} hover:shadow-md transition`}
       style={{ borderStyle: "dashed" }}
     >
+      {/* Icono de acción en esquina superior derecha */}
+      {onActionClick && (
+        <div className="absolute top-4 right-4">
+          <ActionIconButton
+            onClick={onActionClick}
+            icon="🔧"
+            label="Editar o eliminar programa"
+            tooltip="Editar o eliminar este programa"
+          />
+        </div>
+      )}
+
       <div className="flex items-start justify-between mb-4">
-        <div>
+        <div className="flex-1 pr-12">
           <h3 className="text-lg font-bold text-gray-800">{title}</h3>
           <p className="text-gray-600 text-sm">{description}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <span className={`w-3 h-3 rounded-full ${statusDot}`}></span>
-          <span className={`text-sm font-semibold px-3 py-1 rounded-full ${statusBgColor} ${statusColor}`}>
+          <span className={`text-sm font-semibold px-3 py-1 rounded-full whitespace-nowrap ${statusBgColor} ${statusColor}`}>
             {status}
           </span>
         </div>
       </div>
 
       <div className="space-y-3 mb-6 text-sm text-gray-700">
-        <div className="flex justify-between">
-          <span className="font-semibold">Etapa</span>
-          <span>{stage}</span>
-        </div>
         <div>
           <p className="text-gray-600">Entidad responsable</p>
           <p className="font-semibold">{entity}</p>
@@ -60,7 +75,9 @@ function ProgramCard({
         </div>
       </div>
 
-      <div className="flex gap-3">{children}</div>
+      <div className="flex gap-3">
+        {children}
+      </div>
     </div>
   );
 }
