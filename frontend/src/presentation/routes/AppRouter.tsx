@@ -6,6 +6,7 @@ import { Role } from "../../domain/auth/role.enum";
 import DashboardAdminPage from "../modules/admin/pages/DashboardAdminPage";
 import ProgramasPage from "../modules/admin/pages/ProgramasPage";
 import CreateProgramPage from "../modules/admin/pages/CreateProgramPage";
+import EditProgramPage from "../modules/admin/pages/EditProgramPage";
 import ProgramDetailsPage from "../modules/admin/pages/ProgramDetailsPage";
 import PostulantsManagementPage from "../modules/admin/pages/PostulantsManagementPage";
 
@@ -67,18 +68,26 @@ function AppRouter() {
         }
       />
       <Route
-        path="/programas/:programId"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <ProgramDetailsPage />
-          </RoleGuard>
-        }
-      />
-      <Route
         path="/programas/crear"
         element={
           <RoleGuard allowedRoles={[Role.ADMIN]}>
             <CreateProgramPage />
+          </RoleGuard>
+        }
+      />
+      <Route
+        path="/programas/:programId/editar"
+        element={
+          <RoleGuard allowedRoles={[Role.ADMIN]}>
+            <EditProgramPage />
+          </RoleGuard>
+        }
+      />
+      <Route
+        path="/programas/:programId"
+        element={
+          <RoleGuard allowedRoles={[Role.ADMIN]}>
+            <ProgramDetailsPage />
           </RoleGuard>
         }
       />

@@ -51,16 +51,10 @@ function ProgramCard({
         </div>
       )}
 
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1 pr-12">
+      <div className="mb-4">
+        <div className="pr-12">
           <h3 className="text-lg font-bold text-gray-800">{title}</h3>
           <p className="text-gray-600 text-sm">{description}</p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`w-3 h-3 rounded-full ${statusDot}`}></span>
-          <span className={`text-sm font-semibold px-3 py-1 rounded-full whitespace-nowrap ${statusBgColor} ${statusColor}`}>
-            {status}
-          </span>
         </div>
       </div>
 
@@ -73,6 +67,14 @@ function ProgramCard({
           <p className="text-gray-600">Código del programa</p>
           <p className="font-semibold">{programCode}</p>
         </div>
+      </div>
+
+      {/* Estado movido más abajo */}
+      <div className="flex items-center gap-2 mb-6">
+        <span className={`w-3 h-3 rounded-full ${statusDot}`}></span>
+        <span className={`text-sm font-semibold px-3 py-1 rounded-full whitespace-nowrap ${statusBgColor} ${statusColor}`}>
+          {status}
+        </span>
       </div>
 
       <div className="flex gap-3">

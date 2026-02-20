@@ -1,7 +1,8 @@
 """
 Serializador para la entidad Programa
 
-Convierte objetos Python a JSON y valida datos de entrada
+Convierte objetos Python a JSON y valida datos de entrada.
+Las validaciones principales se realizan en la capa de aplicación (casos de uso).
 """
 from rest_framework import serializers
 from infrastructure.database.models import Programa
@@ -24,26 +25,8 @@ class ProgramaSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['codigo_programa', 'fecha_creacion', 'fecha_actualizacion']
 
-    def validate_nombre(self, value):
-        """Validar que el nombre tenga al menos 3 caracteres"""
-        if len(value) < 3:
-            raise serializers.ValidationError(
-                "El nombre debe tener al menos 3 caracteres."
-            )
-        return value
+    def to_representation(self, instance):
+        """Convertir la instancia a datos serializables"""
+        data = super().to_representation(instance)
+        return data
 
-    def validate_descripcion(self, value):
-        """Validar que la descripción tenga al menos 10 caracteres"""
-        if len(value) < 10:
-            raise serializers.ValidationError(
-                "La descripción debe tener al menos 10 caracteres."
-            )
-        return value
-
-    def validate_entidad_responsable(self, value):
-        """Validar que se proporcione una entidad responsable"""
-        if not value or value.strip() == '':
-            raise serializers.ValidationError(
-                "Debe proporcionar una entidad responsable."
-            )
-        return value

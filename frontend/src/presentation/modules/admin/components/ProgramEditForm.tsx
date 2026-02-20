@@ -1,38 +1,43 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { programSchema, type ProgramFormData } from "../schemas/programSchema";
-import { useCreatePrograma } from "../../../../infraestructure/hooks";
+import { useUpdatePrograma } from "../../../../infraestructure/hooks";
 import { RESPONSABLE_ENTITIES } from "../constants/programConstants";
 import * as Select from "@radix-ui/react-select";
+import type { ProgramaResponse } from "../../../../infraestructure/api";
 
-interface ProgramCreationFormProps {
-  onSuccess: (programCode: string) => void;
+interface ProgramEditFormProps {
+  program: ProgramaResponse;
+  onSuccess: () => void;
 }
 
-function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
+function ProgramEditForm({ program, onSuccess }: ProgramEditFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
     control,
   } = useForm<ProgramFormData>({
     resolver: zodResolver(programSchema),
+    defaultValues: {
+      nombre: program.nombre,
+      descripcion: program.descripcion,
+      entidadResponsable: program.entidad_responsable,
+    },
   });
 
-  const createMutation = useCreatePrograma();
+  const updateMutation = useUpdatePrograma(program.id);
 
   const onSubmit = async (data: ProgramFormData) => {
-    createMutation.mutate(
+    updateMutation.mutate(
       {
         nombre: data.nombre,
         descripcion: data.descripcion,
         entidad_responsable: data.entidadResponsable,
       },
       {
-        onSuccess: (response) => {
-          reset();
-          onSuccess(response.codigo_programa);
+        onSuccess: () => {
+          onSuccess();
         },
       }
     );
@@ -41,10 +46,19 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="bg-white p-8 rounded-lg border-2 border-gray-300 max-w-2xl"
+      className="bg-white p-8 rounded-lg border-2 border-yellow-300 max-w-2xl"
     >
+      {/* Advertencia */}
+      <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+        <p className="text-yellow-800 font-semibold">⚠️ Advertencia</p>
+        <p className="text-yellow-700 text-sm mt-2">
+          Los cambios realizados aquí afectarán directamente a los datos del programa. 
+          Asegúrate de que la información sea correcta antes de guardar.
+        </p>
+      </div>
+
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
-        Nuevo Programa de Subsidio
+        Editar Programa: {program.nombre}
       </h2>
 
       {/* Nombre del Programa */}
@@ -61,9 +75,6 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
         {errors.nombre && (
           <p className="text-red-500 text-sm mt-1">{errors.nombre.message}</p>
         )}
-        <p className="text-gray-500 text-xs mt-1">
-          * Nombre con el que se identificará públicamente el programa
-        </p>
       </div>
 
       {/* Descripción */}
@@ -82,9 +93,6 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
             {errors.descripcion.message}
           </p>
         )}
-        <p className="text-gray-500 text-xs mt-1">
-          * Este texto será visible para los ciudadanos
-        </p>
       </div>
 
       {/* Entidad Responsable - Usando Radix UI Select */}
@@ -113,9 +121,6 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
                     </svg>
                   </Select.ScrollUpButton>
                   <Select.Viewport className="p-1">
-                    <Select.Item value="" className="px-4 py-2 text-gray-400 cursor-not-allowed">
-                      <Select.ItemText>Seleccionar entidad</Select.ItemText>
-                    </Select.Item>
                     {RESPONSABLE_ENTITIES.map((entity) => (
                       <Select.Item
                         key={entity}
@@ -143,39 +148,46 @@ function ProgramCreationForm({ onSuccess }: ProgramCreationFormProps) {
         )}
       </div>
 
-      {/* Código del Programa */}
-      <div className="mb-6">
-        <label className="block text-gray-800 font-semibold mb-2">
-          Código del programa
-        </label>
-        <input
-          type="text"
-          value="Se genera automáticamente"
-          disabled
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
-        />
-        <p className="text-gray-500 text-xs mt-1">
-          * El código del programa se crea automáticamente, es un campo no editable
-        </p>
+      {/* Información del Programa */}
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div>
+          <label className="block text-gray-800 font-semibold mb-2">
+            Código del programa
+          </label>
+          <input
+            type="text"
+            value={program.codigo_programa}
+            disabled
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+          />
+          <p className="text-gray-500 text-xs mt-1">No editable</p>
+        </div>
+        <div>
+          <label className="block text-gray-800 font-semibold mb-2">
+            Estado actual
+          </label>
+          <input
+            type="text"
+            value={program.estado}
+            disabled
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+          />
+          <p className="text-gray-500 text-xs mt-1">No editable</p>
+        </div>
       </div>
 
-      {/* Nota final */}
-      <p className="text-gray-600 text-sm mb-6 p-3 bg-gray-50 rounded border-l-4 border-blue-500">
-        * El programa se creará automáticamente con el estado "borrador"
-      </p>
-
-      {/* Botón Submit */}
-      <div className="flex justify-center">
+      {/* Botones */}
+      <div className="flex gap-4 justify-center">
         <button
           type="submit"
-          disabled={createMutation.isPending}
+          disabled={updateMutation.isPending}
           className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-8 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {createMutation.isPending ? "Creando Programa..." : "Crear Programa"}
+          {updateMutation.isPending ? "Guardando..." : "Guardar Cambios"}
         </button>
       </div>
     </form>
   );
 }
 
-export default ProgramCreationForm;
+export default ProgramEditForm;

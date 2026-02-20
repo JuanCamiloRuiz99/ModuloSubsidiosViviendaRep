@@ -5,6 +5,7 @@
 export { default as ProgramDetails } from './ProgramDetails';
 export { default as ProgramCard } from './ProgramCard';
 export { default as ProgramCreationForm } from './ProgramCreationForm';
+export { default as ProgramEditForm } from './ProgramEditForm';
 export { default as ProgramActionButtons } from './ProgramActionButtons';
 export { default as ProgramActionModal } from './ProgramActionModal';
 export { default as StagesManagement } from './StagesManagement';
