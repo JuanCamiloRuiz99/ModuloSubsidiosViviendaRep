@@ -17,8 +17,6 @@ import {
 import type {
   CreateProgramaRequest,
   UpdateProgramaRequest,
-  ProgramaResponse,
-  ProgramaStatistics,
 } from '../api/programas.api';
 
 const PROGRAMAS_KEY = 'programas';

@@ -36,9 +36,9 @@ export const PROGRAMA_ESTADO_COLORS = {
 } as const;
 
 export const RESPONSABLE_ENTITIES = [
-  'Secretaría General',
-  'Alcaldía de Popayán',
-  'Secretaría de Desarrollo Social',
-  'Secretaría de Hacienda',
-  'Secretaría de Infraestructura',
-] as const;
+  { value: 'secretaria_general', label: 'Secretaría General' },
+  { value: 'alcaldia_popayan', label: 'Alcaldía de Popayán' },
+  { value: 'secretaria_desarrollo_social', label: 'Secretaría de Desarrollo Social' },
+  { value: 'secretaria_hacienda', label: 'Secretaría de Hacienda' },
+  { value: 'secretaria_infraestructura', label: 'Secretaría de Infraestructura' },
+];

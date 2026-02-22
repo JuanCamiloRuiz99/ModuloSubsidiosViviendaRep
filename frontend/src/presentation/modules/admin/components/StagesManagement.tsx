@@ -6,7 +6,7 @@ interface Stage {
   numero: number;
   nombre: string;
   descripcion?: string;
-  estado: "configurada" | "activa" | "cerrada";
+  estado: "sin configurar" | "configurada" | "activa" | "cerrada";
   formularioConfigurado: boolean;
   postulaciones?: number;
   fechaCierre?: string;
@@ -43,9 +43,9 @@ export default function StagesManagement({
       id: "1",
       numero: 1,
       nombre: "Inscripción",
-      descripcion: "Un formulario ya ha sido configurado",
-      estado: "configurada",
-      formularioConfigurado: true,
+      descripcion: "Configura el formulario de inscripción",
+      estado: "sin configurar",
+      formularioConfigurado: false,
     },
   ];
 

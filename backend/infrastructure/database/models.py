@@ -117,3 +117,35 @@ class Postulante(models.Model):
 
     def __str__(self):
         return f"{self.nombre} {self.apellido} ({self.numero_documento})"
+
+class Usuario(models.Model):
+    """Modelo ORM para usuarios del sistema (empleados)"""
+
+    ROLES = [
+        ('ADMINISTRADOR', 'Administrador'),
+        ('FUNCIONARIO', 'Funcionario'),
+        ('TECNICO', 'Técnico'),
+    ]
+
+    ESTADOS = [
+        ('ACTIVO', 'Activo'),
+        ('INACTIVO', 'Inactivo'),
+    ]
+
+    nombre = models.CharField(max_length=255, blank=False)
+    apellidos = models.CharField(max_length=255, blank=False)
+    numero_documento = models.CharField(max_length=20, unique=True, blank=False)
+    correo = models.EmailField(unique=True, blank=False)
+    rol = models.CharField(max_length=20, choices=ROLES, default='FUNCIONARIO')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='ACTIVO')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-fecha_creacion']
+        verbose_name = 'Usuario'
+        verbose_name_plural = 'Usuarios'
+        db_table = 'usuarios_usuario'
+
+    def __str__(self):
+        return f"{self.nombre} {self.apellidos} ({self.numero_documento})"

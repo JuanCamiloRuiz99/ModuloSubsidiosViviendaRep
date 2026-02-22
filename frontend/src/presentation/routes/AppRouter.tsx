@@ -9,6 +9,8 @@ import CreateProgramPage from "../modules/admin/pages/CreateProgramPage";
 import EditProgramPage from "../modules/admin/pages/EditProgramPage";
 import ProgramDetailsPage from "../modules/admin/pages/ProgramDetailsPage";
 import PostulantsManagementPage from "../modules/admin/pages/PostulantsManagementPage";
+import UsersManagementPage from "../modules/admin/pages/UsersManagementPage";
+import CreateUsuarioPage from "../modules/admin/pages/CreateUsuarioPage";
 
 // Módulo Funcionario
 import DashboardPostulantePage from "../modules/funcionario/pages/DashboardPostulantePage";
@@ -25,7 +27,7 @@ function AppRouter() {
       <Route path="/" element={<div>Página Pública</div>} />
 
       <Route path="/login" element={<LoginPage />} />
-
+      
       {/* Admin Routes */}
       <Route
         path="/dashboard"
@@ -39,7 +41,15 @@ function AppRouter() {
         path="/usuarios"
         element={
           <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <div>Gestionar Usuarios - Próximamente</div>
+            <UsersManagementPage />
+          </RoleGuard>
+        }
+      />
+      <Route
+        path="/usuarios/crear"
+        element={
+          <RoleGuard allowedRoles={[Role.ADMIN]}>
+            <CreateUsuarioPage />
           </RoleGuard>
         }
       />

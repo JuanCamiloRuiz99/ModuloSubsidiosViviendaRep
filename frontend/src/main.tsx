@@ -11,11 +11,15 @@ import "./index.css";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutos
-      gcTime: 10 * 60 * 1000, // 10 minutos (anteriormente cacheTime)
+      staleTime: 1000, // 1 segundo
+      gcTime: 5 * 60 * 1000, // 5 minutos (anteriormente cacheTime)
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     },
   },
 });
+
+console.log("[main] QueryClient configured");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

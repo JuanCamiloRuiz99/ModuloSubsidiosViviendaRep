@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../../shared/components/layout/MainLayout";
+import PageHeader from "../../shared/components/layout/PageHeader";
 import { ProgramDetails } from "../components";
 
 function ProgramasPage() {
@@ -8,19 +9,17 @@ function ProgramasPage() {
   return (
     <MainLayout centerContent={false}>
       <div className="w-full max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Gestionar Programas</h1>
-          <p className="text-gray-600 mt-2">Administra los programas de subsidios disponibles</p>
-        </div>
-
-        <div className="mb-6 flex justify-end">
+        <PageHeader
+          title="Gestionar Programas"
+          description="Administra los programas de subsidios disponibles"
+        >
           <button
             onClick={() => navigate("/programas/crear")}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition flex items-center gap-2"
           >
-            + Nuevo Programa
+            ➕ Nuevo Programa
           </button>
-        </div>
+        </PageHeader>
 
         <ProgramDetails />
       </div>

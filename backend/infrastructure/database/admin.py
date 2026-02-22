@@ -2,7 +2,35 @@
 Configuración del admin de Django para visualizar modelos
 """
 from django.contrib import admin
-from .models import Programa, Etapa, Postulante, TipoDocumento
+from .models import Programa, Etapa, Postulante, TipoDocumento, Usuario
+
+
+@admin.register(Usuario)
+class UsuarioAdmin(admin.ModelAdmin):
+    list_display = ('nombre_completo', 'numero_documento', 'correo', 'rol', 'estado', 'fecha_creacion')
+    list_filter = ('rol', 'estado', 'fecha_creacion')
+    search_fields = ('nombre', 'apellidos', 'numero_documento', 'correo')
+    readonly_fields = ('fecha_creacion', 'fecha_actualizacion')
+    
+    fieldsets = (
+        ('Información Personal', {
+            'fields': ('nombre', 'apellidos', 'numero_documento')
+        }),
+        ('Contacto', {
+            'fields': ('correo',)
+        }),
+        ('Sistema', {
+            'fields': ('rol', 'estado')
+        }),
+        ('Fechas', {
+            'fields': ('fecha_creacion', 'fecha_actualizacion'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def nombre_completo(self, obj):
+        return f"{obj.nombre} {obj.apellidos}"
+    nombre_completo.short_description = 'Nombre Completo'
 
 
 @admin.register(Programa)

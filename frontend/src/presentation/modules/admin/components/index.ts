@@ -11,3 +11,6 @@ export { default as ProgramActionModal } from './ProgramActionModal';
 export { default as StagesManagement } from './StagesManagement';
 export { default as StageCard } from './StageCard';
 export { default as PostulantsTable } from './PostulantsTable';
+export { default as UserStatsCard } from './UserStatsCard';
+export { default as UsersTable } from './UsersTable';
+export { default as UserForm } from './UserForm';

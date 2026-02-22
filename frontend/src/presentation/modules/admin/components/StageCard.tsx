@@ -2,7 +2,7 @@ interface StageCardProps {
   stageNumber: number;
   name: string;
   description?: string;
-  status: "configurada" | "activa" | "cerrada";
+  status: "sin configurar" | "configurada" | "activa" | "cerrada";
   isFormConfigured?: boolean;
   postulaciones?: number;
   closingDate?: string;
@@ -26,6 +26,12 @@ export default function StageCard({
   onCloseStage,
 }: StageCardProps) {
   const statusConfig = {
+    "sin configurar": {
+      label: "Sin configurar",
+      badgeColor: "bg-gray-100 text-gray-800",
+      borderColor: "border-gray-300",
+      icon: "⚙️",
+    },
     configurada: {
       label: "Configurado",
       badgeColor: "bg-yellow-100 text-yellow-800",
@@ -103,13 +109,30 @@ export default function StageCard({
 
       {/* Actions */}
       <div className="flex flex-wrap gap-3">
+        {status === "sin configurar" && (
+          <>
+            <button
+              onClick={onEditForm}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition"
+            >
+              ➕ Agregar Formulario
+            </button>
+            <button
+              disabled
+              className="flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 rounded-lg font-semibold cursor-not-allowed"
+            >
+              📤 Publicar Etapa
+            </button>
+          </>
+        )}
+
         {status === "configurada" && (
           <>
             <button
               onClick={onEditForm}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition"
             >
-              ✏️ Editar Formulario
+              ✏️ Agregar Formulario
             </button>
             <button
               onClick={onPublish}

@@ -40,14 +40,13 @@ function ProgramActionModal({ isOpen, program, onClose }: ProgramActionModalProp
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50 z-50 animate-in fade-in-0" />
           <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4 animate-in fade-in-0 zoom-in-95 slide-in-from-left-1/2 slide-in-from-top-[48%]">
-            <Dialog.Title className="text-xl font-bold text-gray-800 mb-2">
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
               {program?.nombre}
-            </Dialog.Title>
-            <Dialog.Description className="text-gray-600 text-sm mb-6">
+            </h2>
+            <p className="text-gray-600 text-sm mb-6">
               {program?.codigo_programa}
-            </Dialog.Description>
-
-            <div className="space-y-3">
+            </p>
+            <div>
               <button
                 onClick={handleEdit}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition"

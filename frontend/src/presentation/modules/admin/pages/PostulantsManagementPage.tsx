@@ -4,7 +4,7 @@ import StatusFilter from "../../shared/components/filters/StatusFilter";
 import PostulantsTable from "../components/PostulantsTable";
 
 function PostulantsManagementPage() {
-  const [activeStatus, setActiveStatus] = useState<string | null>(null);
+  const [activeStatus, setActiveStatus] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Status options for filter

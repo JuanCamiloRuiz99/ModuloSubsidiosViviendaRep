@@ -9,9 +9,11 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from presentation.views.programa_viewset import ProgramaViewSet
+from presentation.views.usuario_viewset import UsuarioViewSet
 
 router = DefaultRouter()
 router.register(r'programas', ProgramaViewSet, basename='programa')
+router.register(r'usuarios', UsuarioViewSet, basename='usuario')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -42,9 +42,9 @@ function ConfirmationModal({
               </div>
             )}
           </div>
-          <Dialog.Title className="text-2xl font-bold text-center mb-4">
+          <h2 className="text-2xl font-bold text-center mb-4">
             {title}
-          </Dialog.Title>
+          </h2>
           <Dialog.Description className="text-center text-white text-opacity-90 mb-6">
             {message}
           </Dialog.Description>

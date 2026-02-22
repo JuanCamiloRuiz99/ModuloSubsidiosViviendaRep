@@ -12,6 +12,8 @@ export const apiConfig = {
   },
 };
 
+console.log("[apiClient] API_BASE_URL:", API_BASE_URL);
+
 export const apiClient = async (
   endpoint: string,
   options?: RequestInit
@@ -26,12 +28,57 @@ export const apiClient = async (
     },
   };
 
-  const response = await fetch(url, config);
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({})) as { detail?: string; message?: string };
-    throw new Error(error.detail || error.message || `API error: ${response.status}`);
+  console.log(`[apiClient] ${options?.method || 'GET'} ${url}`);
+  if (options?.body && typeof options.body === 'string') {
+    try {
+      const bodyObj = JSON.parse(options.body);
+      console.log(`[apiClient] Body:`, bodyObj);
+    } catch {}
   }
 
-  return response;
+  try {
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+      console.error(`[apiClient] ❌ HTTP ${response.status}:`, response.statusText);
+      
+      let errorMessage = `API error: ${response.status}`;
+      try {
+        const error = await response.json() as { detail?: string; message?: string; error?: string; errors?: Record<string, any> };
+        
+        // Try to extract meaningful error message
+        if (error.detail) {
+          errorMessage = error.detail;
+        } else if (error.message) {
+          errorMessage = error.message;
+        } else if (error.error) {
+          errorMessage = error.error;
+        } else if (error.errors) {
+          // If there are field errors, combine them
+          const fieldErrors = Object.entries(error.errors)
+            .map(([field, msgs]: [string, any]) => {
+              const msgList = Array.isArray(msgs) ? msgs : [msgs];
+              return `${field}: ${msgList.join(", ")}`;
+            })
+            .join("; ");
+          errorMessage = fieldErrors || `API error: ${response.status}`;
+        }
+        
+        console.error(`[apiClient] Error details:`, error);
+      } catch (parseError) {
+        // If we can't parse JSON, use the status text
+        console.error(`[apiClient] Could not parse error response`);
+      }
+      
+      const error = new Error(errorMessage);
+      (error as any).status = response.status;
+      throw error;
+    }
+
+    console.log(`[apiClient] ✓ ${response.status} OK`);
+    return response;
+  } catch (error) {
+    console.error("[apiClient] ❌ Fetch error:", error);
+    throw error;
+  }
 };
