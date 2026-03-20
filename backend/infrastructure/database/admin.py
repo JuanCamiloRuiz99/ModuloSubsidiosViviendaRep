@@ -2,7 +2,10 @@
 Configuración del admin de Django para visualizar modelos
 """
 from django.contrib import admin
-from .models import Programa, Etapa, Postulante, TipoDocumento
+from .models import (
+    Programa, Etapa, Postulante, TipoDocumento,
+    FormularioEtapa, CampoFormulario, RespuestaFormulario, Ciudadano,
+)
 
 
 @admin.register(Programa)
@@ -31,13 +34,20 @@ class ProgramaAdmin(admin.ModelAdmin):
         return self.readonly_fields
 
 
+@admin.register(Ciudadano)
+class CiudadanoAdmin(admin.ModelAdmin):
+    list_display = ('id_persona', 'primer_nombre', 'primer_apellido', 'tipo_documento', 'numero_documento', 'fecha_creacion')
+    list_filter = ('tipo_documento', 'sexo', 'fecha_creacion', 'formulario__etapa__programa')
+    search_fields = ('numero_documento', 'primer_nombre', 'primer_apellido', 'correo_electronico')
+    readonly_fields = ('id_persona', 'fecha_creacion')
+
+
 @admin.register(Etapa)
 class EtapaAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'programa', 'estado', 'orden', 'fecha_creacion')
-    list_filter = ('estado', 'programa', 'fecha_creacion')
-    search_fields = ('nombre', 'descripcion', 'programa__nombre')
-    readonly_fields = ('fecha_creacion', 'fecha_actualizacion')
-    list_editable = ('orden',)
+    list_display = ('programa', 'numero_etapa', 'modulo_principal', 'activo_logico', 'fecha_creacion')
+    list_filter = ('modulo_principal', 'activo_logico', 'programa', 'fecha_creacion')
+    search_fields = ('programa__nombre',)
+    readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
 
 @admin.register(TipoDocumento)
@@ -52,3 +62,26 @@ class PostulanteAdmin(admin.ModelAdmin):
     list_filter = ('estado', 'programa', 'fecha_postulacion')
     search_fields = ('nombre', 'apellido', 'numero_documento', 'email')
     readonly_fields = ('fecha_postulacion', 'fecha_actualizacion')
+
+
+@admin.register(FormularioEtapa)
+class FormularioEtapaAdmin(admin.ModelAdmin):
+    list_display = ('etapa', 'estado', 'fecha_creacion', 'fecha_publicacion')
+    list_filter = ('estado',)
+    readonly_fields = ('fecha_creacion',)
+
+
+@admin.register(CampoFormulario)
+class CampoFormularioAdmin(admin.ModelAdmin):
+    list_display = ('formulario', 'campo_catalogo', 'orden', 'obligatorio')
+    list_filter = ('obligatorio', 'formulario')
+    search_fields = ('campo_catalogo',)
+    ordering = ('formulario', 'orden')
+
+
+@admin.register(RespuestaFormulario)
+class RespuestaFormularioAdmin(admin.ModelAdmin):
+    list_display = ('postulante', 'formulario', 'campo_catalogo', 'fecha_respuesta')
+    list_filter = ('formulario', 'campo_catalogo')
+    search_fields = ('postulante__nombre', 'postulante__apellido', 'campo_catalogo')
+    readonly_fields = ('fecha_respuesta',)

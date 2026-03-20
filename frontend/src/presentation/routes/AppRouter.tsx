@@ -1,135 +1,47 @@
-import { Routes, Route } from "react-router-dom";
-import RoleGuard from "./RoleGuard";
-import { Role } from "../../domain/auth/role.enum";
+/**
+ * AppRouter - Rutas principales de la aplicacion
+ */
 
-// Módulo Admin
-import DashboardAdminPage from "../modules/admin/pages/DashboardAdminPage";
-import ProgramasPage from "../modules/admin/pages/ProgramasPage";
-import CreateProgramPage from "../modules/admin/pages/CreateProgramPage";
-import ProgramDetailsPage from "../modules/admin/pages/ProgramDetailsPage";
-import PostulantsManagementPage from "../modules/admin/pages/PostulantsManagementPage";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import UsuariosRoutes from '../../features/usuarios/presentation/routes/UsuariosRoutes';
+import ProgramasRoutes from '../../features/programas/presentation/routes/ProgramasRoutes';
+import PostulantesRoutes from '../../features/postulantes/presentation/routes/PostulantesRoutes';
+import VisitasRoutes from '../../features/visitas/presentation/routes/VisitasRoutes';
+import MisVisitasRoutes from '../../features/visitas/presentation/routes/MisVisitasRoutes';
+import { FormularioPublicoPage, RegistroHogarPage } from '../../features/programas/presentation/pages';
+import { LoginPage, PrivateRoute } from '../../features/auth';
+import { MainLayout } from '../../shared/presentation/components';
 
-// Módulo Funcionario
-import DashboardPostulantePage from "../modules/funcionario/pages/DashboardPostulantePage";
-
-// Módulo Visitante
-import DashboardVisitantePage from "../modules/visitante/pages/DashboardVisitantePage";
-
-// Módulo Compartido
-import LoginPage from "../modules/shared/pages/LoginPage";
-
-function AppRouter() {
+export default function AppRouter() {
   return (
-    <Routes>
-      <Route path="/" element={<div>Página Pública</div>} />
+    <Router>
+      <Routes>
+        {/* Ruta de login */}
+        <Route path="/login" element={<LoginPage />} />
 
-      <Route path="/login" element={<LoginPage />} />
+        {/* Rutas publicas para ciudadanos — sin MainLayout ni autenticacion */}
+        <Route path="/formulario/:etapaId"    element={<FormularioPublicoPage />} />
+        <Route path="/registro-hogar/:etapaId" element={<RegistroHogarPage />} />
 
-      {/* Admin Routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <DashboardAdminPage />
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/usuarios"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <div>Gestionar Usuarios - Próximamente</div>
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/postulantes-admin"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <div>Ver Postulantes - Próximamente</div>
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/reportes"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <div>Generar Reportes - Próximamente</div>
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/programas"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <ProgramasPage />
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/programas/:programId"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <ProgramDetailsPage />
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/programas/crear"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <CreateProgramPage />
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/postulantes"
-        element={
-          <RoleGuard allowedRoles={[Role.ADMIN]}>
-            <PostulantsManagementPage />
-          </RoleGuard>
-        }
-      />
-
-      {/* Funcionario Routes */}
-      <Route
-        path="/postulantes"
-        element={
-          <RoleGuard allowedRoles={[Role.FUNCIONARIO]}>
-            <DashboardPostulantePage />
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/postulaciones"
-        element={
-          <RoleGuard allowedRoles={[Role.FUNCIONARIO]}>
-            <div>Gestionar Postulaciones - Próximamente</div>
-          </RoleGuard>
-        }
-      />
-
-      {/* Visitante Routes */}
-      <Route
-        path="/visitas"
-        element={
-          <RoleGuard allowedRoles={[Role.VISITANTE]}>
-            <DashboardVisitantePage />
-          </RoleGuard>
-        }
-      />
-      <Route
-        path="/mis-visitas"
-        element={
-          <RoleGuard allowedRoles={[Role.VISITANTE]}>
-            <div>Gestionar Visitas - Próximamente</div>
-          </RoleGuard>
-        }
-      />
-
-      <Route path="*" element={<div>404</div>} />
-    </Routes>
+        {/* Rutas privadas con layout del sistema */}
+        <Route
+          path="/*"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <Routes>
+                  <Route path="/usuarios/*"    element={<PrivateRoute allowedRoles={[1]}><UsuariosRoutes /></PrivateRoute>} />
+                  <Route path="/programas/*"   element={<PrivateRoute allowedRoles={[1, 2]}><ProgramasRoutes /></PrivateRoute>} />
+                  <Route path="/postulantes/*" element={<PrivateRoute allowedRoles={[1, 2]}><PostulantesRoutes /></PrivateRoute>} />
+                  <Route path="/visitas/*"     element={<PrivateRoute allowedRoles={[1, 2]}><VisitasRoutes /></PrivateRoute>} />
+                  <Route path="/mis-visitas/*" element={<PrivateRoute allowedRoles={[3]}><MisVisitasRoutes /></PrivateRoute>} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }
-
-export default AppRouter;

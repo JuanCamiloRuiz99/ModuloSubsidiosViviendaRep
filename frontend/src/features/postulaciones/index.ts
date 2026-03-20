@@ -1,0 +1,8 @@
+/**
+ * Índice del módulo Postulaciones
+ */
+
+export * from './domain';
+export * from './application';
+export * from './infrastructure';
+export * from './presentation';
