@@ -5,3 +5,6 @@ export { FormularioPublicoPage }       from './FormularioPublicoPage';
 export { RegistroHogarPage }           from './RegistroHogarPage';
 export { RegistroHogarConfigPage }     from './RegistroHogarConfigPage';
 export { VisitaTecnicaConfigPage }     from './VisitaTecnicaConfigPage';
+export { GestionDocumentalConfigPage } from './GestionDocumentalConfigPage';
+export { GestionDocumentalPage }       from './GestionDocumentalPage';
+export { GestionDocumentosPostulacionPage } from './GestionDocumentosPostulacionPage';

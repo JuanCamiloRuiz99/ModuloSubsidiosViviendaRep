@@ -7,9 +7,9 @@
  *  3. Publicar / inhabilitar el acceso ciudadano al formulario.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { etapaRepository } from '../../infrastructure/persistence/axios-etapa-repository';
 import { etapasQueryKey } from '../hooks/useEtapas';
 import { useConfigCamposRegistroHogar } from '../hooks/useConfigCamposRegistroHogar';
@@ -19,8 +19,6 @@ import { SECCIONES } from '../components/registro-hogar/config/secciones-data';
 export const RegistroHogarConfigPage: React.FC = () => {
   const navigate = useNavigate();
   const { id: programaId, etapaId } = useParams<{ id: string; etapaId: string }>();
-  const queryClient = useQueryClient();
-  const [accionExito, setAccionExito] = useState<string | null>(null);
 
   const { data: etapas, isLoading } = useQuery({
     queryKey: etapasQueryKey(programaId!),
@@ -42,30 +40,7 @@ export const RegistroHogarConfigPage: React.FC = () => {
     resetConfig,
   } = useConfigCamposRegistroHogar(etapaId);
 
-  const invalidar = () => {
-    void queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) });
-  };
 
-  const publicarMutation = useMutation({
-    mutationFn: () => etapaRepository.publicarRegistroHogar(Number(etapaId)),
-    onSuccess: () => {
-      invalidar();
-      setAccionExito('Formulario publicado. Los ciudadanos ya pueden acceder al registro del hogar.');
-    },
-  });
-
-  const inhabilitarMutation = useMutation({
-    mutationFn: () => etapaRepository.inhabilitarRegistroHogar(Number(etapaId)),
-    onSuccess: () => {
-      invalidar();
-      setAccionExito('Formulario inhabilitado. El acceso ciudadano fue suspendido.');
-    },
-  });
-
-  const isPending = publicarMutation.isPending || inhabilitarMutation.isPending;
-  const actionError =
-    (publicarMutation.isError ? (publicarMutation.error instanceof Error ? publicarMutation.error.message : 'Error al publicar') : null) ??
-    (inhabilitarMutation.isError ? (inhabilitarMutation.error instanceof Error ? inhabilitarMutation.error.message : 'Error al inhabilitar') : null);
 
   if (isLoading || isLoadingConfig || !etapa) {
     return (
@@ -108,18 +83,10 @@ export const RegistroHogarConfigPage: React.FC = () => {
         </span>
       </div>
 
-      {/* Banner exito */}
-      {accionExito && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
-          <p className="text-sm text-green-700">{accionExito}</p>
-          <button onClick={() => setAccionExito(null)} className="text-green-400 hover:text-green-700 font-bold text-lg leading-none flex-shrink-0">&times;</button>
-        </div>
-      )}
-
       {/* Banner error */}
-      {(actionError || saveError) && (
+      {saveError && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-          {actionError ?? saveError}
+          {saveError}
         </div>
       )}
 
@@ -187,35 +154,13 @@ export const RegistroHogarConfigPage: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
-            Volver
-          </button>
-          {isPublicado ? (
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={() => { setAccionExito(null); inhabilitarMutation.mutate(); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-sm transition-colors"
-            >
-              {inhabilitarMutation.isPending ? 'Inhabilitando...' : 'Inhabilitar acceso'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={isPending || isDirty}
-              title={isDirty ? 'Guarda los cambios antes de publicar' : undefined}
-              onClick={() => { setAccionExito(null); publicarMutation.mutate(); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-sm transition-colors"
-            >
-              {publicarMutation.isPending ? 'Publicando...' : 'Publicar etapa'}
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors"
+        >
+          Volver
+        </button>
       </div>
 
     </div>

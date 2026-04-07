@@ -12,7 +12,7 @@ export class ProgramaMapper {
    */
   static toProgramaEntity(raw: any): Programa {
     return new Programa(
-      raw.id,
+      String(raw.id),
       raw.nombre,
       raw.descripcion,
       raw.entidad_responsable || raw.entidadResponsable,

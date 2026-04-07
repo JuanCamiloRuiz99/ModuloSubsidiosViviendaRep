@@ -76,9 +76,22 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
     # ── Crear ──────────────────────────────────────────────────────────────── #
 
     def perform_create(self, serializer):
-        serializer.save(
+        visita = serializer.save(
             id_encuestador_creacion=serializer.validated_data['encuestador'],
         )
+        self._actualizar_postulacion_si_efectiva(visita)
+
+    def perform_update(self, serializer):
+        visita = serializer.save()
+        self._actualizar_postulacion_si_efectiva(visita)
+
+    def _actualizar_postulacion_si_efectiva(self, visita):
+        """Si la visita es efectiva, marca la postulación como VISITA_REALIZADA."""
+        if visita.visita_efectiva:
+            postulacion = visita.postulacion
+            if postulacion and postulacion.estado not in ('VISITA_REALIZADA', 'APROBADA', 'RECHAZADA'):
+                postulacion.estado = 'VISITA_REALIZADA'
+                postulacion.save(update_fields=['estado'])
 
     # ── Datos Hogar Etapa 2 ────────────────────────────────────────────────── #
 
@@ -106,6 +119,20 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
 
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        # ── Req 31: si la visita es efectiva y se guardan datos, marcar COMPLETADA ─ #
+        if visita.visita_efectiva:
+            if visita.estado_visita not in ('COMPLETADA', 'CANCELADA'):
+                visita.estado_visita = 'COMPLETADA'
+                visita.fecha_realizacion = now()
+                visita.save(update_fields=['estado_visita', 'fecha_realizacion'])
+
+            # Actualizar estado de la postulación a VISITA_REALIZADA
+            postulacion = visita.postulacion
+            if postulacion and postulacion.estado not in ('VISITA_REALIZADA', 'APROBADA', 'RECHAZADA'):
+                postulacion.estado = 'VISITA_REALIZADA'
+                postulacion.save(update_fields=['estado'])
+
         return Response(
             DatosHogarEtapa2Serializer(serializer.instance).data,
             status=status.HTTP_200_OK,
@@ -137,6 +164,19 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
             nombre_archivo=upload.validated_data['archivo'].name,
             observaciones=upload.validated_data.get('observaciones', ''),
         )
+
+        # ── Req 31: Auto state change al cargar informe técnico ─────────── #
+        tipo = upload.validated_data['tipo_documento']
+        if tipo == 'INFORME_TECNICO':
+            postulacion = visita.postulacion
+            if postulacion.estado in ('VISITA_PENDIENTE', 'EN_REVISION'):
+                postulacion.estado = 'VISITA_REALIZADA'
+                postulacion.save(update_fields=['estado'])
+            if visita.estado_visita != 'COMPLETADA':
+                visita.estado_visita = 'COMPLETADA'
+                visita.fecha_realizacion = now()
+                visita.save(update_fields=['estado_visita', 'fecha_realizacion'])
+
         return Response(
             DocumentoVisitaEtapa2Serializer(doc).data,
             status=status.HTTP_201_CREATED,

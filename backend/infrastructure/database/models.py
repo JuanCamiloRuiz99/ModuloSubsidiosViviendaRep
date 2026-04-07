@@ -74,6 +74,8 @@ class Etapa(models.Model):
     )
     fecha_modificacion = models.DateTimeField(null=True, blank=True)
     activo_logico = models.BooleanField(default=True)
+    finalizada = models.BooleanField(default=False)
+    fecha_finalizacion = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['programa', 'numero_etapa']
@@ -636,6 +638,70 @@ class ConfigRegistroHogar(models.Model):
         return f'Config Registro Hogar – Etapa {self.etapa.numero_etapa}'
 
 
+class ConfigVisitaTecnica(models.Model):
+    """
+    Configuración de campos del formulario de Visita Técnica para una etapa.
+    Almacena para cada campo_id si está habilitado y si es obligatorio.
+    El diccionario `campos` tiene la forma:
+        { "campo_id": { "requerido": bool, "habilitado": bool } }
+    """
+
+    etapa = models.OneToOneField(
+        Etapa,
+        on_delete=models.CASCADE,
+        related_name='config_visita_tecnica',
+    )
+    campos = models.JSONField(
+        default=dict,
+        help_text='Dict: { campo_id: { "requerido": bool, "habilitado": bool } }',
+    )
+    publicado = models.BooleanField(
+        default=False,
+        help_text='True cuando el gestor ha publicado el formulario de visita técnica.',
+    )
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'config_visita_tecnica'
+        verbose_name = 'Configuración Visita Técnica'
+        verbose_name_plural = 'Configuraciones Visita Técnica'
+
+    def __str__(self):
+        return f'Config Visita Técnica – Etapa {self.etapa.numero_etapa}'
+
+
+class ConfigGestionDocumental(models.Model):
+    """
+    Configuración de campos del formulario de Gestión Documental Interna para una etapa.
+    Almacena para cada campo_id si está habilitado y si es obligatorio.
+    El diccionario `campos` tiene la forma:
+        { "campo_id": { "requerido": bool, "habilitado": bool } }
+    """
+
+    etapa = models.OneToOneField(
+        Etapa,
+        on_delete=models.CASCADE,
+        related_name='config_gestion_documental',
+    )
+    campos = models.JSONField(
+        default=dict,
+        help_text='Dict: { campo_id: { "requerido": bool, "habilitado": bool } }',
+    )
+    publicado = models.BooleanField(
+        default=False,
+        help_text='True cuando el gestor ha publicado el formulario de gestión documental.',
+    )
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'config_gestion_documental'
+        verbose_name = 'Configuración Gestión Documental'
+        verbose_name_plural = 'Configuraciones Gestión Documental'
+
+    def __str__(self):
+        return f'Config Gestión Documental – Etapa {self.etapa.numero_etapa}'
+
+
 # ─────────────────────────────────────────────────────────────────────────── #
 # Postulacion – registro de ciclo de vida de una solicitud                    #
 # ─────────────────────────────────────────────────────────────────────────── #
@@ -686,6 +752,14 @@ class Postulacion(models.Model):
         blank=True,
         related_name='postulaciones_modificadas',
         db_column='usuario_modificacion',
+    )
+    funcionario_asignado = models.ForeignKey(
+        'database.UsuarioSistema',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='postulaciones_asignadas',
+        db_column='funcionario_asignado',
     )
     fecha_modificacion = models.DateTimeField(null=True, blank=True)
     activo_logico = models.BooleanField(default=True)
@@ -987,6 +1061,9 @@ class DocumentoVisitaEtapa2(models.Model):
         ('RECIBO_AGUA',                       'Recibo de agua'),
         ('RECIBO_ENERGIA',                    'Recibo de energía'),
         ('RECIBO_GAS',                        'Recibo de gas'),
+        ('FOTO_VISITA',                       'Foto de la visita'),
+        ('INFORME_TECNICO',                   'Informe técnico'),
+        ('ACTA_VISITA',                       'Acta de visita'),
         ('OTRO',                              'Otro'),
     ]
 
@@ -1029,6 +1106,149 @@ class DocumentoVisitaEtapa2(models.Model):
 
     def __str__(self):
         return f'{self.tipo_documento} – Visita #{self.visita_id}'
+
+    def save(self, *args, **kwargs):
+        if self.archivo:
+            self.ruta_archivo = self.archivo.name
+        super().save(*args, **kwargs)
+
+
+# ─────────────────────────────────────────────────────────────────────────── #
+# Llamadas – Registro de llamadas a postulantes                               #
+# ─────────────────────────────────────────────────────────────────────────── #
+
+class LlamadaPostulacion(models.Model):
+    """Registro de una llamada telefónica a un postulante."""
+
+    RESULTADO_CHOICES = [
+        ('CONTESTADA',            'Contestada'),
+        ('NO_CONTESTA',           'No contesta'),
+        ('BUZON',                 'Buzón de voz'),
+        ('NUMERO_EQUIVOCADO',     'Número equivocado'),
+        ('NUMERO_FUERA_SERVICIO', 'Número fuera de servicio'),
+    ]
+
+    postulacion = models.ForeignKey(
+        Postulacion,
+        on_delete=models.CASCADE,
+        related_name='llamadas',
+    )
+    usuario_llamada = models.ForeignKey(
+        'database.UsuarioSistema',
+        on_delete=models.PROTECT,
+        related_name='llamadas_realizadas',
+        db_column='usuario_llamada',
+    )
+    fecha_llamada = models.DateField()
+    hora_llamada = models.TimeField()
+    resultado = models.CharField(max_length=30, choices=RESULTADO_CHOICES)
+    observaciones = models.TextField(blank=True, default='')
+
+    # Trazabilidad
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    activo_logico = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'llamadas_postulacion'
+        ordering = ['-fecha_llamada', '-hora_llamada']
+        verbose_name = 'Llamada a Postulante'
+        verbose_name_plural = 'Llamadas a Postulantes'
+        indexes = [
+            models.Index(fields=['postulacion'], name='idx_llamada_postulacion'),
+        ]
+
+    def __str__(self):
+        return f'Llamada #{self.pk} – Postulación {self.postulacion_id} ({self.resultado})'
+
+
+# ─────────────────────────────────────────────────────────────────────────── #
+# Documentos Proceso Interno – Gestión Documental Etapa 3                     #
+# ─────────────────────────────────────────────────────────────────────────── #
+
+class DocumentoProcesoInterno(models.Model):
+    """Documentos del proceso interno de gestión documental (Etapa 3)."""
+
+    TIPO_DOCUMENTO_CHOICES = [
+        ('ACTA_VISITA_TECNICA',              'Acta de visita técnica'),
+        ('FORMULARIO_UNICO_NACIONAL',        'Formulario único nacional'),
+        ('RADICADO_CURADURIA',               'Radicado de curaduría'),
+        ('EXPENSA_RADICACION_INICIAL',       'Expensa de radicación inicial'),
+        ('EXPENSA_LICENCIA_FINAL',           'Expensa de licencia final'),
+        ('PODER_AUTENTICADO',                'Poder autenticado'),
+        ('INFORME_TECNICO_VALIDACION',       'Informe técnico de validación'),
+        ('APROBACION_MINVIVIENDA',           'Aprobación MinVivienda'),
+        ('OFICIO_CONSTRUCTOR',               'Oficio del constructor'),
+        ('TARJETA_PROFESIONAL_CONSTRUCTOR',  'Tarjeta profesional del constructor'),
+        ('CERTIFICACION_EXPERIENCIA',        'Certificación de experiencia'),
+        ('PLANOS_LEVANTAMIENTO_PDF',         'Planos de levantamiento (PDF)'),
+        ('PLANOS_LEVANTAMIENTO_DWG',         'Planos de levantamiento (DWG)'),
+        ('PLANOS_ARQUITECTONICOS_PDF',       'Planos arquitectónicos (PDF)'),
+        ('PLANOS_ARQUITECTONICOS_DWG',       'Planos arquitectónicos (DWG)'),
+        ('PLANOS_ESTRUCTURALES_PDF',         'Planos estructurales (PDF)'),
+        ('PLANOS_ESTRUCTURALES_DWG',         'Planos estructurales (DWG)'),
+        ('FOTO_VALLA_CURADURIA',             'Foto de valla de curaduría'),
+        ('PRESUPUESTO_PDF',                  'Presupuesto de obra (PDF)'),
+        ('PRESUPUESTO_XLSX',                 'Presupuesto de obra (Excel)'),
+        ('OFICIO_USO_SUELOS',                'Oficio de uso de suelos'),
+        ('CONCEPTO_GESTION_RIESGO',          'Concepto de gestión de riesgo'),
+        ('RIESGO_INUNDACION_REMOCION',       'Riesgo de inundación / remoción masa'),
+        ('CERTIFICACION_AGUA',               'Certificación de agua'),
+        ('CERTIFICACION_ENERGIA',            'Certificación de energía'),
+    ]
+
+    postulacion = models.ForeignKey(
+        Postulacion,
+        on_delete=models.CASCADE,
+        related_name='documentos_proceso_interno',
+    )
+    tipo_documento = models.CharField(max_length=50, choices=TIPO_DOCUMENTO_CHOICES)
+    nombre_archivo = models.CharField(max_length=300, blank=True, default='')
+    archivo = models.FileField(upload_to='documentos/proceso_interno/%Y/%m/')
+    ruta_archivo = models.CharField(max_length=500, blank=True, default='')
+    numero_radicado_orfeo_solicitud = models.CharField(max_length=50, blank=True, default='')
+    numero_radicado_orfeo_respuesta = models.CharField(max_length=50, blank=True, default='')
+    observaciones = models.TextField(blank=True, default='')
+
+    # Trazabilidad
+    usuario_creacion = models.ForeignKey(
+        'database.UsuarioSistema',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='docs_proceso_creados',
+        db_column='usuario_creacion_doc_pi',
+    )
+    fecha_creacion_reg = models.DateTimeField(auto_now_add=True)
+    usuario_modificacion = models.ForeignKey(
+        'database.UsuarioSistema',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='docs_proceso_modificados',
+        db_column='usuario_modificacion_doc_pi',
+    )
+    fecha_modificacion = models.DateTimeField(null=True, blank=True)
+    usuario_eliminacion = models.ForeignKey(
+        'database.UsuarioSistema',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='docs_proceso_eliminados',
+        db_column='usuario_eliminacion_doc_pi',
+    )
+    fecha_eliminacion = models.DateTimeField(null=True, blank=True)
+    activo_logico = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'documentos_proceso_interno'
+        verbose_name = 'Documento de Proceso Interno'
+        verbose_name_plural = 'Documentos de Proceso Interno'
+        indexes = [
+            models.Index(fields=['postulacion'], name='idx_doc_pi_postulacion'),
+        ]
+
+    def __str__(self):
+        return f'{self.get_tipo_documento_display()} – Postulación #{self.postulacion_id}'
 
     def save(self, *args, **kwargs):
         if self.archivo:

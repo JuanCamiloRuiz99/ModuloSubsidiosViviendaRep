@@ -24,21 +24,21 @@ export default function LoginPage() {
   const displayError = serverError || error;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-alcaldia-dark via-alcaldia-blue to-alcaldia-dark px-4">
       {/* Fondo decorativo */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-alcaldia-yellow/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-alcaldia-blue/20 rounded-full blur-3xl" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Cabecera con escudo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-xl mb-4">
-            <span className="text-4xl">🏛️</span>
+            <img src="/logo-alcaldia.png" alt="Escudo Alcaldía de Popayán" className="h-16 w-auto" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">ALCALDÍA DE POPAYÁN</h1>
-          <p className="text-blue-200 text-sm mt-1">Sistema de Gestión de Subsidios de Vivienda</p>
+          <p className="text-alcaldia-yellow-light text-sm mt-1">Sistema de Gestión de Subsidios de Vivienda</p>
         </div>
 
         {/* Tarjeta de login */}
@@ -78,7 +78,7 @@ export default function LoginPage() {
                   value={correo}
                   onChange={e => setCorreo(e.target.value)}
                   placeholder="funcionario@alcaldia.gov.co"
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-alcaldia-blue focus:border-transparent transition-shadow"
                 />
               </div>
             </div>
@@ -102,7 +102,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-11 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+                  className="w-full pl-10 pr-11 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-alcaldia-blue focus:border-transparent transition-shadow"
                 />
                 <button
                   type="button"
@@ -128,7 +128,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 bg-blue-800 hover:bg-blue-900 disabled:bg-blue-400 text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 px-4 bg-alcaldia-blue hover:bg-alcaldia-dark disabled:bg-alcaldia-blue/50 text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -142,8 +142,33 @@ export default function LoginPage() {
           </form>
         </div>
 
+        {/* Acceso rápido por roles (solo desarrollo) */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-5 mt-5">
+          <p className="text-alcaldia-yellow-light text-xs font-semibold uppercase tracking-wider mb-3 text-center">
+            Acceso rápido por rol
+          </p>
+          <div className="flex flex-col gap-2">
+            {[
+              { label: 'Administrador', correo: 'admin@alcaldia.gov.co', password: 'Admin123*', icon: '🛡️', color: 'from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800' },
+              { label: 'Funcionario', correo: 'funcionario@alcaldia.gov.co', password: 'Func123*', icon: '🏢', color: 'from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800' },
+              { label: 'Técnico Visitante', correo: 'tecnico@alcaldia.gov.co', password: 'Tec123*', icon: '🔧', color: 'from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800' },
+            ].map((r) => (
+              <button
+                key={r.correo}
+                type="button"
+                disabled={isLoading}
+                onClick={() => login({ correo: r.correo, password: r.password })}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r ${r.color} transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm`}
+              >
+                <span className="text-lg">{r.icon}</span>
+                <span>Entrar como {r.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Footer */}
-        <p className="text-center text-blue-300/60 text-xs mt-6">
+        <p className="text-center text-alcaldia-yellow-light/60 text-xs mt-6">
           © {new Date().getFullYear()} Alcaldía de Popayán — Módulo de Subsidios de Vivienda
         </p>
       </div>

@@ -14,6 +14,7 @@ interface EtapasManagerProps {
   programaId: string | number;
   programaNombre: string;
   programaDescripcion: string;
+  programaEstado?: string;
   onVolver?: () => void;
 }
 
@@ -21,6 +22,7 @@ export const EtapasManager: React.FC<EtapasManagerProps> = ({
   programaId,
   programaNombre,
   programaDescripcion,
+  programaEstado,
   onVolver,
 }) => {
   const [showModal, setShowModal] = useState(false);
@@ -37,11 +39,8 @@ export const EtapasManager: React.FC<EtapasManagerProps> = ({
   // Número de la siguiente etapa disponible para crear
   const nextNumero = etapas.length + 1;
   const ultimaEtapa = etapas[etapas.length - 1];
-  const ultimaEtapaPublicada =
-    ultimaEtapa?.formulario_estado === 'PUBLICADO' ||
-    ultimaEtapa?.registro_hogar_publicado === true;
   const puedeCrearNuevaEtapa =
-    etapas.length === 0 || ultimaEtapaPublicada;
+    etapas.length === 0 || ultimaEtapa?.finalizada === true;
 
   const crearMutation = useCrearEtapa(programaId);
   const actualizarMutation = useActualizarEtapa(programaId);
@@ -111,7 +110,7 @@ export const EtapasManager: React.FC<EtapasManagerProps> = ({
           <button
             onClick={() => { if (puedeCrearNuevaEtapa) { setEditandoEtapa(null); setShowModal(true); } }}
             disabled={!puedeCrearNuevaEtapa}
-            title={puedeCrearNuevaEtapa ? undefined : `Publica la Etapa ${ultimaEtapa?.numero_etapa ?? ''} antes de crear una nueva`}
+            title={puedeCrearNuevaEtapa ? undefined : `Finaliza la Etapa ${ultimaEtapa?.numero_etapa ?? ''} antes de crear una nueva`}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-sm ${
               puedeCrearNuevaEtapa
                 ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
@@ -125,7 +124,7 @@ export const EtapasManager: React.FC<EtapasManagerProps> = ({
           </button>
           {!puedeCrearNuevaEtapa && (
             <div className="absolute right-0 top-full mt-1 z-10 hidden group-hover:block w-max max-w-xs bg-gray-800 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none">
-              Publica la Etapa {ultimaEtapa?.numero_etapa} para poder crear la siguiente
+              Finaliza la Etapa {ultimaEtapa?.numero_etapa} para poder crear la siguiente
             </div>
           )}
         </div>
@@ -146,7 +145,7 @@ export const EtapasManager: React.FC<EtapasManagerProps> = ({
       ) : (
         <div className="flex flex-col gap-4">
           {etapas.map(etapa => (
-            <EtapaCard key={etapa.id} etapa={etapa} programaId={programaId} />
+            <EtapaCard key={etapa.id} etapa={etapa} programaId={programaId} programaEstado={programaEstado} />
           ))}
         </div>
       )}

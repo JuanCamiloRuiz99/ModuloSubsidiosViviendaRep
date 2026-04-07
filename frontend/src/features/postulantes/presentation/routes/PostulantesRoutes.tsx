@@ -4,7 +4,7 @@ import { PostulantesPage } from '../pages/PostulantesPage';
 
 const PostulantesRoutes: React.FC = () => (
   <Routes>
-    <Route path="/" element={<PostulantesPage />} />
+    <Route index element={<PostulantesPage />} />
   </Routes>
 );
 

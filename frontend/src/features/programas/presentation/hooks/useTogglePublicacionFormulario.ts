@@ -17,6 +17,7 @@ export function useTogglePublicacionFormulario(programaId: string | number) {
     mutationFn: ({ etapaId, modulo }: { etapaId: number; modulo: ModuloPrincipal }) => {
       if (modulo === 'REGISTRO_HOGAR') return etapaRepository.publicarRegistroHogar(etapaId);
       if (modulo === 'VISITA_TECNICA') return etapaRepository.publicarVisitaTecnica(etapaId);
+      if (modulo === 'GESTION_DOCUMENTAL_INTERNA') return etapaRepository.publicarGestionDocumental(etapaId);
       return etapaRepository.publicarFormulario(etapaId);
     },
     onSuccess: invalidateEtapas,
@@ -26,6 +27,7 @@ export function useTogglePublicacionFormulario(programaId: string | number) {
     mutationFn: ({ etapaId, modulo }: { etapaId: number; modulo: ModuloPrincipal }) => {
       if (modulo === 'REGISTRO_HOGAR') return etapaRepository.inhabilitarRegistroHogar(etapaId);
       if (modulo === 'VISITA_TECNICA') return etapaRepository.inhabilitarVisitaTecnica(etapaId);
+      if (modulo === 'GESTION_DOCUMENTAL_INTERNA') return etapaRepository.inhabilitarGestionDocumental(etapaId);
       return etapaRepository.inhabilitarFormulario(etapaId);
     },
     onSuccess: invalidateEtapas,

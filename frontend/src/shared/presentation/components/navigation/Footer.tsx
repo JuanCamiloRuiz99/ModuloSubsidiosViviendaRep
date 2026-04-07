@@ -6,7 +6,7 @@ import React from 'react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-gray-900 text-gray-300 mt-auto border-t-4 border-blue-600">
+    <footer className="bg-alcaldia-dark text-gray-300 mt-auto border-t-4 border-alcaldia-yellow">
       {/* Main Footer Content */}
       <div className="px-8 py-12">
         <div className="grid grid-cols-4 gap-8 max-w-7xl mx-auto mb-8">
@@ -40,7 +40,7 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="text-white font-bold mb-4 text-sm uppercase tracking-wide">Transparencia</h4>
             <p className="text-xs mb-2">Línea anticorrupción:</p>
-            <p className="text-base font-bold text-orange-400">018000 913 040</p>
+            <p className="text-base font-bold text-alcaldia-yellow">018000 913 040</p>
             <p className="text-xs mt-3 text-gray-400">Disponible 24/7</p>
           </div>
         </div>
@@ -52,7 +52,7 @@ export const Footer: React.FC = () => {
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-500">&copy; 2024 Alcaldía de Popayán. Todos los derechos reservados.</p>
           <div className="text-xs text-gray-400">
-            <span className="text-orange-400 font-bold">GOV.CO</span> - Gobierno en Línea
+            <span className="text-alcaldia-yellow font-bold">GOV.CO</span> - Gobierno en Línea
           </div>
         </div>
       </div>

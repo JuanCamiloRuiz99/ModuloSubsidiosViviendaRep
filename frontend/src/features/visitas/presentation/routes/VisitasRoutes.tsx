@@ -4,7 +4,7 @@ import { VisitasPage } from '../pages/VisitasPage';
 
 const VisitasRoutes: React.FC = () => (
   <Routes>
-    <Route path="/" element={<VisitasPage />} />
+    <Route index element={<VisitasPage />} />
   </Routes>
 );
 

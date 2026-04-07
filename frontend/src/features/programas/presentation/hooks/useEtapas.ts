@@ -50,3 +50,23 @@ export const useEliminarEtapa = (programaId: string | number) => {
     },
   });
 };
+
+export const useTerminarEtapa = (programaId: string | number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (etapaId: number) => etapaRepository.terminarEtapa(etapaId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId) });
+    },
+  });
+};
+
+export const useReactivarEtapa = (programaId: string | number) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (etapaId: number) => etapaRepository.reactivarEtapa(etapaId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId) });
+    },
+  });
+};

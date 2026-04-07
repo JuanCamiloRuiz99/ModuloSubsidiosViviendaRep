@@ -22,6 +22,10 @@ export interface EtapaData {
   formulario_configurado: boolean;
   formulario_estado: 'BORRADOR' | 'PUBLICADO' | null;
   registro_hogar_publicado: boolean;
+  visita_tecnica_publicado: boolean;
+  gestion_documental_publicado: boolean;
+  finalizada: boolean;
+  fecha_finalizacion: string | null;
 }
 
 export interface CrearEtapaPayload {
@@ -150,6 +154,22 @@ export const etapaRepository = {
     return data;
   },
 
+  async publicarGestionDocumental(etapaId: number): Promise<{ publicado: boolean; fecha_modificacion: string }> {
+    const { data } = await apiService.post<{ publicado: boolean; fecha_modificacion: string }>(
+      `etapas/${etapaId}/publicar-gestion-documental/`,
+      {},
+    );
+    return data;
+  },
+
+  async inhabilitarGestionDocumental(etapaId: number): Promise<{ publicado: boolean }> {
+    const { data } = await apiService.post<{ publicado: boolean }>(
+      `etapas/${etapaId}/inhabilitar-gestion-documental/`,
+      {},
+    );
+    return data;
+  },
+
   async obtenerFormulario(etapaId: number): Promise<FormularioData> {
     const { data } = await apiService.get<FormularioData>(`etapas/${etapaId}/formulario/`);
     return data;
@@ -169,6 +189,22 @@ export const etapaRepository = {
     const { data } = await apiService.post<EnvioFormularioResult>(
       `etapas/${etapaId}/enviar-formulario/`,
       { respuestas },
+    );
+    return data;
+  },
+
+  async terminarEtapa(etapaId: number): Promise<EtapaData> {
+    const { data } = await apiService.post<EtapaData>(
+      `etapas/${etapaId}/terminar-etapa/`,
+      {},
+    );
+    return data;
+  },
+
+  async reactivarEtapa(etapaId: number): Promise<EtapaData> {
+    const { data } = await apiService.post<EtapaData>(
+      `etapas/${etapaId}/reactivar-etapa/`,
+      {},
     );
     return data;
   },

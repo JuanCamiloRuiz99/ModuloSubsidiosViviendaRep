@@ -113,13 +113,19 @@ export const ProgramasPage: React.FC = () => {
   const [isEstadoPending, setIsEstadoPending] = useState<string | null>(null);
 
   const handleCambiarEstado = async (id: string, nuevoEstado: string) => {
-    setIsEstadoPending(id);
+    const strId = String(id);
+    setIsEstadoPending(strId);
     try {
-      await cambiarEstadoMutation.mutateAsync({ id, nuevoEstado });
+      await cambiarEstadoMutation.mutateAsync({ id: strId, nuevoEstado });
       const labels: Record<string, string> = { ACTIVO: 'publicado', INHABILITADO: 'inhabilitado', BORRADOR: 'pasado a borrador' };
       showToast(`✅ Programa ${labels[nuevoEstado] ?? nuevoEstado} exitosamente`);
-    } catch (err) {
-      showToast(`❌ ${err instanceof Error ? err.message : 'Error al cambiar estado'}`, 'error');
+      void refetch();
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.error ??
+        err?.response?.data?.detail ??
+        (err instanceof Error ? err.message : 'Error al cambiar estado');
+      showToast(`❌ ${msg}`, 'error');
     } finally {
       setIsEstadoPending(null);
     }

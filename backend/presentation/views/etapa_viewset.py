@@ -10,7 +10,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from infrastructure.database.models import (
     Etapa, FormularioEtapa, CampoFormulario, Ciudadano,
-    ConfigRegistroHogar, Postulacion, GestionHogarEtapa1, MiembroHogar,
+    ConfigRegistroHogar, ConfigVisitaTecnica, ConfigGestionDocumental,
+    Postulacion, GestionHogarEtapa1, MiembroHogar,
 )
 from presentation.serializers.etapa_serializer import EtapaSerializer
 from presentation.serializers.registro_hogar_serializer import RegistroHogarSubmitSerializer
@@ -417,6 +418,49 @@ class EtapaViewSet(viewsets.ModelViewSet):
 
     # ── Publicación Visita Técnica ─────────────────────────────────────── #
 
+    @action(detail=True, methods=['get', 'post'], url_path='visita-tecnica-config')
+    def visita_tecnica_config(self, request, pk=None):
+        """
+        GET  – Devuelve la configuración de campos del formulario de Visita Técnica.
+        POST – Guarda (crea o actualiza) la configuración de campos.
+               Body: { "campos": { "campo_id": { "requerido": bool, "habilitado": bool } } }
+        """
+        etapa = self.get_object()
+
+        if request.method == 'GET':
+            try:
+                config = etapa.config_visita_tecnica
+                return Response({
+                    'campos': config.campos,
+                    'fecha_modificacion': config.fecha_modificacion,
+                })
+            except ConfigVisitaTecnica.DoesNotExist:
+                return Response({'campos': {}, 'fecha_modificacion': None})
+
+        # POST
+        campos_data = request.data.get('campos', {})
+        if not isinstance(campos_data, dict):
+            return Response(
+                {'detail': 'El campo "campos" debe ser un objeto.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for campo_id, cfg in campos_data.items():
+            if not isinstance(cfg, dict) or 'requerido' not in cfg or 'habilitado' not in cfg:
+                return Response(
+                    {'detail': f'Entrada inválida para el campo "{campo_id}". Se esperan las claves "requerido" y "habilitado".'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        config, _ = ConfigVisitaTecnica.objects.get_or_create(etapa=etapa)
+        config.campos = campos_data
+        config.save(update_fields=['campos', 'fecha_modificacion'])
+
+        return Response({
+            'campos': config.campos,
+            'fecha_modificacion': config.fecha_modificacion,
+        })
+
     @action(detail=True, methods=['post'], url_path='publicar-visita-tecnica')
     def publicar_visita_tecnica(self, request, pk=None):
         """
@@ -424,13 +468,10 @@ class EtapaViewSet(viewsets.ModelViewSet):
         POST /api/etapas/{id}/publicar-visita-tecnica/
         """
         etapa = self.get_object()
-        formulario, _ = FormularioEtapa.objects.get_or_create(
-            etapa=etapa, defaults={'estado': 'BORRADOR'},
-        )
-        formulario.estado = 'PUBLICADO'
-        formulario.fecha_publicacion = timezone.now()
-        formulario.save(update_fields=['estado', 'fecha_publicacion'])
-        return Response({'estado': 'PUBLICADO', 'fecha_publicacion': formulario.fecha_publicacion})
+        config, _ = ConfigVisitaTecnica.objects.get_or_create(etapa=etapa)
+        config.publicado = True
+        config.save(update_fields=['publicado', 'fecha_modificacion'])
+        return Response({'publicado': True, 'fecha_modificacion': config.fecha_modificacion})
 
     @action(detail=True, methods=['post'], url_path='inhabilitar-visita-tecnica')
     def inhabilitar_visita_tecnica(self, request, pk=None):
@@ -439,9 +480,172 @@ class EtapaViewSet(viewsets.ModelViewSet):
         POST /api/etapas/{id}/inhabilitar-visita-tecnica/
         """
         etapa = self.get_object()
-        formulario, _ = FormularioEtapa.objects.get_or_create(
-            etapa=etapa, defaults={'estado': 'BORRADOR'},
-        )
-        formulario.estado = 'BORRADOR'
-        formulario.save(update_fields=['estado'])
-        return Response({'estado': 'BORRADOR'})
+        config, _ = ConfigVisitaTecnica.objects.get_or_create(etapa=etapa)
+        config.publicado = False
+        config.save(update_fields=['publicado', 'fecha_modificacion'])
+        return Response({'publicado': False})
+
+    # ── Publicación Gestión Documental Interna ─────────────────────────── #
+
+    @action(detail=True, methods=['get', 'post'], url_path='gestion-documental-config')
+    def gestion_documental_config(self, request, pk=None):
+        """
+        GET  – Devuelve la configuración de campos del formulario de Gestión Documental.
+        POST – Guarda (crea o actualiza) la configuración de campos.
+               Body: { "campos": { "campo_id": { "requerido": bool, "habilitado": bool } } }
+        """
+        etapa = self.get_object()
+
+        if request.method == 'GET':
+            try:
+                config = etapa.config_gestion_documental
+                return Response({
+                    'campos': config.campos,
+                    'fecha_modificacion': config.fecha_modificacion,
+                })
+            except ConfigGestionDocumental.DoesNotExist:
+                return Response({'campos': {}, 'fecha_modificacion': None})
+
+        # POST
+        campos_data = request.data.get('campos', {})
+        if not isinstance(campos_data, dict):
+            return Response(
+                {'detail': 'El campo "campos" debe ser un objeto.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for campo_id, cfg in campos_data.items():
+            if not isinstance(cfg, dict) or 'requerido' not in cfg or 'habilitado' not in cfg:
+                return Response(
+                    {'detail': f'Entrada inválida para el campo "{campo_id}". Se esperan las claves "requerido" y "habilitado".'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        config, _ = ConfigGestionDocumental.objects.get_or_create(etapa=etapa)
+        config.campos = campos_data
+        config.save(update_fields=['campos', 'fecha_modificacion'])
+
+        return Response({
+            'campos': config.campos,
+            'fecha_modificacion': config.fecha_modificacion,
+        })
+
+    @action(detail=True, methods=['post'], url_path='publicar-gestion-documental')
+    def publicar_gestion_documental(self, request, pk=None):
+        """
+        Publica la etapa de Gestión Documental Interna.
+        POST /api/etapas/{id}/publicar-gestion-documental/
+        """
+        etapa = self.get_object()
+        config, _ = ConfigGestionDocumental.objects.get_or_create(etapa=etapa)
+        config.publicado = True
+        config.save(update_fields=['publicado', 'fecha_modificacion'])
+        return Response({'publicado': True, 'fecha_modificacion': config.fecha_modificacion})
+
+    @action(detail=True, methods=['post'], url_path='inhabilitar-gestion-documental')
+    def inhabilitar_gestion_documental(self, request, pk=None):
+        """
+        Inhabilita el acceso al formulario de gestión documental.
+        POST /api/etapas/{id}/inhabilitar-gestion-documental/
+        """
+        etapa = self.get_object()
+        config, _ = ConfigGestionDocumental.objects.get_or_create(etapa=etapa)
+        config.publicado = False
+        config.save(update_fields=['publicado', 'fecha_modificacion'])
+        return Response({'publicado': False})
+
+    # ── Terminar / Reactivar Etapa ─────────────────────────────────────── #
+
+    @action(detail=True, methods=['post'], url_path='terminar-etapa')
+    def terminar_etapa(self, request, pk=None):
+        """
+        Finaliza la etapa. Solo si el programa está ACTIVO y la etapa está publicada.
+        POST /api/etapas/{id}/terminar-etapa/
+        """
+        etapa = self.get_object()
+
+        if etapa.programa.estado != 'ACTIVO':
+            return Response(
+                {'detail': 'No se puede finalizar: el programa no está activo.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verificar que la etapa esté publicada
+        publicada = False
+        if etapa.modulo_principal == 'REGISTRO_HOGAR':
+            publicada = getattr(
+                getattr(etapa, 'config_registro_hogar', None), 'publicado', False
+            )
+        elif etapa.modulo_principal == 'VISITA_TECNICA':
+            publicada = getattr(
+                getattr(etapa, 'config_visita_tecnica', None), 'publicado', False
+            )
+        elif etapa.modulo_principal == 'GESTION_DOCUMENTAL_INTERNA':
+            publicada = getattr(
+                getattr(etapa, 'config_gestion_documental', None), 'publicado', False
+            )
+        else:
+            try:
+                publicada = etapa.formulario.estado == 'PUBLICADO'
+            except FormularioEtapa.DoesNotExist:
+                publicada = False
+
+        if not publicada:
+            return Response(
+                {'detail': 'No se puede finalizar: la etapa no está publicada.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Inhabilitar el formulario/registro al finalizar
+        if etapa.modulo_principal == 'REGISTRO_HOGAR':
+            try:
+                config = etapa.config_registro_hogar
+                config.publicado = False
+                config.save(update_fields=['publicado', 'fecha_modificacion'])
+            except ConfigRegistroHogar.DoesNotExist:
+                pass
+        elif etapa.modulo_principal == 'VISITA_TECNICA':
+            try:
+                config = etapa.config_visita_tecnica
+                config.publicado = False
+                config.save(update_fields=['publicado', 'fecha_modificacion'])
+            except ConfigVisitaTecnica.DoesNotExist:
+                pass
+        elif etapa.modulo_principal == 'GESTION_DOCUMENTAL_INTERNA':
+            try:
+                config = etapa.config_gestion_documental
+                config.publicado = False
+                config.save(update_fields=['publicado', 'fecha_modificacion'])
+            except ConfigGestionDocumental.DoesNotExist:
+                pass
+        else:
+            try:
+                formulario = etapa.formulario
+                formulario.estado = 'BORRADOR'
+                formulario.save(update_fields=['estado'])
+            except FormularioEtapa.DoesNotExist:
+                pass
+
+        etapa.finalizada = True
+        etapa.fecha_finalizacion = timezone.now()
+        etapa.save(update_fields=['finalizada', 'fecha_finalizacion'])
+        return Response(EtapaSerializer(etapa).data)
+
+    @action(detail=True, methods=['post'], url_path='reactivar-etapa')
+    def reactivar_etapa(self, request, pk=None):
+        """
+        Reactiva una etapa previamente finalizada.
+        POST /api/etapas/{id}/reactivar-etapa/
+        """
+        etapa = self.get_object()
+
+        if not etapa.finalizada:
+            return Response(
+                {'detail': 'La etapa no está finalizada.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        etapa.finalizada = False
+        etapa.fecha_finalizacion = None
+        etapa.save(update_fields=['finalizada', 'fecha_finalizacion'])
+        return Response(EtapaSerializer(etapa).data)

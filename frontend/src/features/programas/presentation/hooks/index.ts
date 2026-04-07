@@ -12,6 +12,8 @@ export {
   useCrearEtapa,
   useActualizarEtapa,
   useEliminarEtapa,
+  useTerminarEtapa,
+  useReactivarEtapa,
 } from './useEtapas';
 export { useGuardarFormulario } from './useGuardarFormulario';
 export { useTogglePublicacionFormulario, usePublicarFormulario, useInhabilitarFormulario } from './useTogglePublicacionFormulario';

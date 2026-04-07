@@ -23,9 +23,10 @@ export const PrivateRoute: React.FC<Props> = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.rol)) {
-    // Redirigir al técnico a su módulo si intenta acceder a rutas admin
+    // Redirigir a cada rol a su módulo si intenta acceder a rutas no permitidas
     if (user.rol === 3) return <Navigate to="/mis-visitas" replace />;
-    return <Navigate to="/" replace />;
+    if (user.rol === 2) return <Navigate to="/mis-postulaciones" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

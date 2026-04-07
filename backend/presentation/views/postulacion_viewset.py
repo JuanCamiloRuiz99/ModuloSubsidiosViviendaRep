@@ -10,6 +10,7 @@ Endpoints disponibles:
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models import Count, Q
+from django.http import FileResponse
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -18,8 +19,14 @@ from rest_framework.response import Response
 from infrastructure.database.models import (
     Postulacion,
     DocumentoGestionHogar,
+    DocumentoMiembroHogar,
+    DocumentoVisitaEtapa2,
+    DocumentoProcesoInterno,
     GestionHogarEtapa1,
+    MiembroHogar,
+    Visita,
 )
+from infrastructure.database.usuarios_models import UsuarioSistema
 
 
 TIPO_DOCUMENTO_LABELS = {
@@ -111,7 +118,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         """
         qs = (
             GestionHogarEtapa1.objects
-            .select_related('ciudadano', 'postulacion__programa', 'etapa__programa')
+            .select_related('ciudadano', 'postulacion__programa', 'postulacion__funcionario_asignado', 'etapa__programa')
             .annotate(total_miembros=Count('miembros'))
             .order_by('-fecha_radicado')
         )
@@ -119,6 +126,10 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         estado = request.query_params.get('estado')
         if estado:
             qs = qs.filter(postulacion__estado=estado)
+
+        funcionario_id = request.query_params.get('funcionario_id')
+        if funcionario_id:
+            qs = qs.filter(postulacion__funcionario_asignado_id=funcionario_id)
 
         programa_id = request.query_params.get('programa_id')
         if programa_id:
@@ -151,6 +162,15 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             elif g.etapa_id and g.etapa.programa_id:
                 programa_nom = g.etapa.programa.nombre
 
+            # Buscar visita asociada a la postulación
+            visita_id = None
+            if p:
+                visita = Visita.objects.filter(
+                    postulacion_id=p.id, activo_logico=True,
+                ).exclude(estado_visita='CANCELADA').order_by('-fecha_registro').first()
+                if visita:
+                    visita_id = visita.id
+
             results.append({
                 'id':              g.id,
                 'numero_radicado': g.numero_radicado,
@@ -168,6 +188,11 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 'tipo_predio':     g.tipo_predio,
                 'direccion':       g.direccion,
                 'total_miembros':  g.total_miembros,
+                'visita_id':       visita_id,
+                'funcionario_asignado': {
+                    'id': p.funcionario_asignado.id_usuario,
+                    'nombre': p.funcionario_asignado.nombre_completo,
+                } if (p and p.funcionario_asignado_id) else None,
             })
 
         return Response(results)
@@ -428,3 +453,414 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             observaciones=observaciones,
         )
         return Response({'id': doc.id}, status=status.HTTP_201_CREATED)
+
+    # ── Distribución equitativa de postulaciones ─────────────────────── #
+
+    @action(detail=False, methods=['get'], url_path='funcionarios-activos')
+    def funcionarios_activos(self, request):
+        """
+        Lista los funcionarios activos (rol id=2) para asignar postulaciones.
+        GET /api/postulaciones/funcionarios-activos/
+        """
+        funcionarios = UsuarioSistema.objects.filter(
+            id_rol_id=2,
+            activo=True,
+            activo_logico=True,
+        ).values('id_usuario', 'nombre_completo', 'correo')
+
+        return Response(list(funcionarios))
+
+    @action(detail=False, methods=['post'], url_path='distribuir')
+    def distribuir(self, request):
+        """
+        Distribuye postulaciones equitativamente entre los funcionarios activos.
+        POST /api/postulaciones/distribuir/
+        Body: {
+          "num_grupos": 3,             // Cantidad de grupos (= funcionarios a asignar)
+          "funcionario_ids": [1,2,3],  // IDs de los funcionarios seleccionados
+          "postulacion_ids": [5,8,...], // (opcional) IDs específicos a distribuir;
+                                       //   si se omite, distribuye TODAS las no asignadas
+        }
+        """
+        num_grupos = request.data.get('num_grupos')
+        funcionario_ids = request.data.get('funcionario_ids', [])
+        postulacion_ids = request.data.get('postulacion_ids', None)
+
+        if not num_grupos or not isinstance(num_grupos, int) or num_grupos < 1:
+            return Response(
+                {'detail': 'num_grupos debe ser un entero mayor a 0.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not funcionario_ids or not isinstance(funcionario_ids, list):
+            return Response(
+                {'detail': 'funcionario_ids debe ser una lista de IDs de funcionarios.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(funcionario_ids) != num_grupos:
+            return Response(
+                {'detail': 'La cantidad de funcionarios debe coincidir con num_grupos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verificar que los funcionarios existen y son FUNCIONARIO activo
+        funcionarios = UsuarioSistema.objects.filter(
+            id_usuario__in=funcionario_ids,
+            id_rol_id=2,
+            activo=True,
+            activo_logico=True,
+        )
+        if funcionarios.count() != len(funcionario_ids):
+            return Response(
+                {'detail': 'Uno o más funcionarios no son válidos o no están activos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Obtener postulaciones a distribuir (solo las NO asignadas)
+        qs = Postulacion.objects.filter(
+            activo_logico=True,
+            funcionario_asignado__isnull=True,
+        )
+        if postulacion_ids:
+            qs = qs.filter(id__in=postulacion_ids)
+
+        postulaciones = list(qs.order_by('id'))
+        total = len(postulaciones)
+
+        if total == 0:
+            return Response(
+                {'detail': 'No hay postulaciones disponibles para distribuir.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Distribución equitativa (round-robin)
+        asignaciones = {fid: [] for fid in funcionario_ids}
+        for idx, post in enumerate(postulaciones):
+            fid = funcionario_ids[idx % num_grupos]
+            asignaciones[fid].append(post.id)
+
+        # Actualizar en base de datos
+        total_asignadas = 0
+        resumen = []
+        func_map = {f.id_usuario: f.nombre_completo for f in funcionarios}
+        for fid, pids in asignaciones.items():
+            if pids:
+                Postulacion.objects.filter(id__in=pids).update(funcionario_asignado_id=fid)
+                total_asignadas += len(pids)
+            resumen.append({
+                'funcionario_id': fid,
+                'funcionario_nombre': func_map.get(fid, ''),
+                'cantidad': len(pids),
+                'postulacion_ids': pids,
+            })
+
+        return Response({
+            'total_distribuidas': total_asignadas,
+            'grupos': resumen,
+        })
+
+    @action(detail=False, methods=['post'], url_path='asignar-individual')
+    def asignar_individual(self, request):
+        """
+        Asigna una postulación individual a un funcionario.
+        POST /api/postulaciones/asignar-individual/
+        Body: { "postulacion_id": 5, "funcionario_id": 2 }
+        """
+        postulacion_id = request.data.get('postulacion_id')
+        funcionario_id = request.data.get('funcionario_id')
+
+        if not postulacion_id or not funcionario_id:
+            return Response(
+                {'detail': 'postulacion_id y funcionario_id son requeridos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            postulacion = Postulacion.objects.get(id=postulacion_id, activo_logico=True)
+        except Postulacion.DoesNotExist:
+            return Response(
+                {'detail': 'La postulación no existe o no está activa.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            funcionario = UsuarioSistema.objects.get(
+                id_usuario=funcionario_id,
+                id_rol_id=2,
+                activo=True,
+                activo_logico=True,
+            )
+        except UsuarioSistema.DoesNotExist:
+            return Response(
+                {'detail': 'El funcionario no existe o no está activo.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        postulacion.funcionario_asignado = funcionario
+        postulacion.save(update_fields=['funcionario_asignado'])
+
+        return Response({
+            'detail': 'Postulación asignada correctamente.',
+            'postulacion_id': postulacion.id,
+            'funcionario_id': funcionario.id_usuario,
+            'funcionario_nombre': funcionario.nombre_completo,
+        })
+
+    @action(detail=False, methods=['post'], url_path='descargar-documentos')
+    def descargar_documentos(self, request):
+        """
+        Descarga masiva de documentos en ZIP.
+        POST /api/postulaciones/descargar-documentos/
+        Body: {
+            "postulacion_ids": [1, 2, ...],
+            "tipos_documento": {
+                "hogar":   ["FOTO_CEDULA_FRENTE", ...],
+                "miembro": ["CEDULA", ...],
+                "visita":  ["RECIBO_PREDIAL", ...],
+                "proceso": ["ACTA_VISITA_TECNICA", ...]
+            }
+        }
+        """
+        import io
+        import os
+        import zipfile
+        import unicodedata
+        import re
+
+        postulacion_ids = request.data.get('postulacion_ids', [])
+        tipos = request.data.get('tipos_documento', {})
+
+        if not postulacion_ids:
+            return Response(
+                {'detail': 'Debe seleccionar al menos una postulación.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        tipos_hogar   = tipos.get('hogar', [])
+        tipos_miembro = tipos.get('miembro', [])
+        tipos_visita  = tipos.get('visita', [])
+        tipos_proceso = tipos.get('proceso', [])
+
+        if not any([tipos_hogar, tipos_miembro, tipos_visita, tipos_proceso]):
+            return Response(
+                {'detail': 'Debe seleccionar al menos un tipo de documento.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar que los IDs sean enteros
+        try:
+            postulacion_ids = [int(pid) for pid in postulacion_ids]
+        except (ValueError, TypeError):
+            return Response(
+                {'detail': 'IDs de postulación inválidos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Obtener postulaciones con sus relaciones
+        postulaciones = Postulacion.objects.filter(
+            id__in=postulacion_ids, activo_logico=True,
+        ).select_related('programa')
+
+        if not postulaciones.exists():
+            return Response(
+                {'detail': 'No se encontraron postulaciones válidas.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        from datetime import date as date_cls
+
+        def safe_filename(name):
+            """Elimina caracteres no válidos para nombres de carpeta."""
+            name = unicodedata.normalize('NFKD', name)
+            name = re.sub(r'[^\w\s\-.]', '', name)
+            return name.strip()[:100]
+
+        fecha_descarga = date_cls.today().strftime('%Y-%m-%d')
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for postulacion in postulaciones:
+                # Datos para la carpeta
+                programa_nombre = safe_filename(
+                    postulacion.programa.nombre if postulacion.programa else 'Sin_programa'
+                )
+
+                # Nombre de la persona (cabeza de hogar)
+                gestion = GestionHogarEtapa1.objects.filter(
+                    postulacion=postulacion,
+                ).select_related('ciudadano').first()
+
+                if gestion and gestion.ciudadano:
+                    c = gestion.ciudadano
+                    partes = [c.primer_nombre, c.segundo_nombre, c.primer_apellido, c.segundo_apellido]
+                    persona = safe_filename(' '.join(p for p in partes if p))
+                else:
+                    persona = 'Sin_nombre'
+
+                fecha_post = ''
+                if postulacion.fecha_postulacion:
+                    fecha_post = f' ({postulacion.fecha_postulacion.strftime("%Y-%m-%d")})'
+
+                carpeta_base = f'{programa_nombre} - {fecha_descarga}/{persona}_{postulacion.id}{fecha_post}'
+
+                # Siempre crear la carpeta de la postulación (aunque no tenga documentos)
+                zf.writestr(f'{carpeta_base}/', '')
+
+                # 1) Documentos del hogar (Etapa 1)
+                if tipos_hogar and gestion:
+                    docs_hogar = DocumentoGestionHogar.objects.filter(
+                        postulacion=gestion,
+                        tipo_documento__in=tipos_hogar,
+                        activo_logico=True,
+                    )
+                    tipo_count: dict[str, int] = {}
+                    for doc in docs_hogar:
+                        tipo_count[doc.tipo_documento] = tipo_count.get(doc.tipo_documento, 0) + 1
+                        self._add_doc_to_zip(zf, doc.archivo, carpeta_base, doc.tipo_documento, tipo_count[doc.tipo_documento])
+
+                # 2) Documentos de miembros
+                if tipos_miembro and gestion:
+                    miembros = MiembroHogar.objects.filter(postulacion=gestion)
+                    for miembro in miembros:
+                        nombre_miembro = safe_filename(
+                            f'{miembro.primer_nombre} {miembro.primer_apellido}'
+                        )
+                        docs_miembro = DocumentoMiembroHogar.objects.filter(
+                            miembro=miembro,
+                            tipo_documento__in=tipos_miembro,
+                            activo_logico=True,
+                        )
+                        tipo_count_m: dict[str, int] = {}
+                        for doc in docs_miembro:
+                            tipo_count_m[doc.tipo_documento] = tipo_count_m.get(doc.tipo_documento, 0) + 1
+                            subcarpeta = f'{carpeta_base}/miembros/{nombre_miembro}'
+                            self._add_doc_to_zip(zf, doc.archivo, subcarpeta, doc.tipo_documento, tipo_count_m[doc.tipo_documento])
+
+                # 3) Documentos de visita (Etapa 2)
+                if tipos_visita:
+                    visitas = Visita.objects.filter(
+                        postulacion=postulacion, activo_logico=True,
+                    )
+                    tipo_count_v: dict[str, int] = {}
+                    for visita in visitas:
+                        docs_visita = DocumentoVisitaEtapa2.objects.filter(
+                            visita=visita,
+                            tipo_documento__in=tipos_visita,
+                            activo_logico=True,
+                        )
+                        for doc in docs_visita:
+                            tipo_count_v[doc.tipo_documento] = tipo_count_v.get(doc.tipo_documento, 0) + 1
+                            self._add_doc_to_zip(zf, doc.archivo, carpeta_base, doc.tipo_documento, tipo_count_v[doc.tipo_documento])
+
+                # 4) Documentos proceso interno (Etapa 3)
+                if tipos_proceso:
+                    docs_proceso = DocumentoProcesoInterno.objects.filter(
+                        postulacion=postulacion,
+                        tipo_documento__in=tipos_proceso,
+                        activo_logico=True,
+                    )
+                    tipo_count_p: dict[str, int] = {}
+                    for doc in docs_proceso:
+                        tipo_count_p[doc.tipo_documento] = tipo_count_p.get(doc.tipo_documento, 0) + 1
+                        self._add_doc_to_zip(zf, doc.archivo, carpeta_base, doc.tipo_documento, tipo_count_p[doc.tipo_documento])
+
+        buf.seek(0)
+        # Nombre descriptivo para el ZIP
+        programas_en_descarga = set(
+            safe_filename(p.programa.nombre) for p in postulaciones if p.programa
+        )
+        if len(programas_en_descarga) == 1:
+            zip_name = f'{programas_en_descarga.pop()} - {fecha_descarga}.zip'
+        else:
+            zip_name = f'Documentos_postulaciones - {fecha_descarga}.zip'
+        response = FileResponse(buf, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{zip_name}"'
+        return response
+
+    @staticmethod
+    def _resolve_storage_path(name):
+        """Resuelve la ruta real en el storage, manejando el prefijo documentos/ duplicado."""
+        candidate = name.lstrip('/')
+        if default_storage.exists(candidate):
+            return candidate
+        # Quitar o agregar prefijo 'documentos/' si está desalineado con MEDIA_ROOT
+        if candidate.startswith('documentos/'):
+            alt = candidate.replace('documentos/', '', 1)
+        else:
+            alt = f'documentos/{candidate}'
+        if default_storage.exists(alt):
+            return alt
+        return None
+
+    @staticmethod
+    def _add_doc_to_zip(zf, archivo_field, carpeta, tipo_doc, counter=None):
+        """Agrega un archivo al ZIP si existe en el storage."""
+        import os
+        if not archivo_field or not archivo_field.name:
+            return
+        resolved = PostulacionViewSet._resolve_storage_path(archivo_field.name)
+        if not resolved:
+            return
+        try:
+            with default_storage.open(resolved, 'rb') as f:
+                ext = os.path.splitext(archivo_field.name)[1]
+                # Usar sufijo numérico si hay duplicados del mismo tipo
+                suffix = f'_{counter}' if counter and counter > 1 else ''
+                nombre_en_zip = f'{carpeta}/{tipo_doc}{suffix}{ext}'
+                zf.writestr(nombre_en_zip, f.read())
+        except Exception:
+            pass
+
+    @action(detail=False, methods=['get'], url_path='consultar-estado')
+    def consultar_estado(self, request):
+        """
+        Consulta pública del estado de postulación por número de documento.
+        Solo devuelve información si el ciudadano es cabeza de hogar.
+        GET /api/postulaciones/consultar-estado/?numero_documento=123456
+        """
+        numero_documento = request.query_params.get('numero_documento', '').strip()
+        if not numero_documento:
+            return Response(
+                {'detail': 'Debe proporcionar el número de documento.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Buscar miembros del hogar que sean cabeza de hogar con ese documento
+        miembros = MiembroHogar.objects.filter(
+            numero_documento=numero_documento,
+            es_cabeza_hogar=True,
+        ).select_related(
+            'postulacion',
+            'postulacion__postulacion',
+            'postulacion__postulacion__programa',
+        )
+
+        if not miembros.exists():
+            return Response(
+                {'detail': 'No se encontró una postulación asociada a este número de documento como cabeza de hogar.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        resultados = []
+        for miembro in miembros:
+            gestion = miembro.postulacion
+            postulacion = gestion.postulacion if gestion else None
+            if not postulacion:
+                continue
+            resultados.append({
+                'numero_radicado': gestion.numero_radicado,
+                'programa': postulacion.programa.nombre if postulacion.programa else '',
+                'estado': postulacion.estado,
+                'estado_label': dict(Postulacion.ESTADOS).get(postulacion.estado, postulacion.estado),
+                'fecha_postulacion': postulacion.fecha_postulacion,
+                'nombre_postulante': f'{miembro.primer_nombre} {miembro.primer_apellido}',
+            })
+
+        if not resultados:
+            return Response(
+                {'detail': 'No se encontró una postulación asociada a este número de documento.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(resultados)

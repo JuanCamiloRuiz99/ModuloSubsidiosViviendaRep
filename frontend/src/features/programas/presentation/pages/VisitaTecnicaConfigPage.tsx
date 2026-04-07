@@ -1,159 +1,27 @@
 /**
  * VisitaTecnicaConfigPage – Configuración de la etapa 2 (Visita Técnica).
  *
- * Vista del gestor/admin – similar a RegistroHogarConfigPage:
- *  1. Muestra las secciones del formulario que el técnico completará.
+ * Vista del gestor/admin:
+ *  1. Configura qué campos son obligatorios/activos (toggles por campo).
  *  2. Lista las visitas registradas para esta etapa.
  *  3. Publicar / Inhabilitar el acceso del técnico al formulario.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { etapaRepository } from '../../infrastructure/persistence/axios-etapa-repository';
 import { etapasQueryKey } from '../hooks/useEtapas';
 import { useVisitasEtapa2 } from '../hooks/useVisitaEtapa2';
-
-// ── Secciones del formulario ─────────────────────────────────────────────── //
-
-interface CampoInfo {
-  nombre: string;
-  tipo: string;
-  obligatorio: boolean;
-}
-
-interface SeccionInfo {
-  id: string;
-  titulo: string;
-  icono: string;
-  descripcion: string;
-  campos: CampoInfo[];
-}
-
-const SECCIONES_VISITA: SeccionInfo[] = [
-  {
-    id: 'info_visita',
-    titulo: 'Información de la Visita',
-    icono: '📋',
-    descripcion: 'Datos generales de la visita técnica realizada.',
-    campos: [
-      { nombre: 'Fecha de la visita', tipo: 'Fecha/Hora', obligatorio: true },
-      { nombre: '¿Visita efectiva?', tipo: 'Sí / No', obligatorio: true },
-      { nombre: 'Motivo no efectiva', tipo: 'Selección (Ausente, Rechazo, Dirección no encontrada, Otro)', obligatorio: false },
-      { nombre: 'Motivo otro (detalle)', tipo: 'Texto', obligatorio: false },
-    ],
-  },
-  {
-    id: 'encuestado',
-    titulo: 'Datos del Encuestado',
-    icono: '👤',
-    descripcion: 'Información de la persona encuestada durante la visita.',
-    campos: [
-      { nombre: 'Miembro del hogar', tipo: 'Selección (miembros registrados)', obligatorio: false },
-      { nombre: 'Nombre del encuestado', tipo: 'Texto', obligatorio: false },
-      { nombre: 'Número de documento', tipo: 'Texto', obligatorio: false },
-      { nombre: 'Teléfono de contacto', tipo: 'Texto', obligatorio: false },
-    ],
-  },
-  {
-    id: 'acta_obs',
-    titulo: 'Acta y Observaciones',
-    icono: '📝',
-    descripcion: 'Registro documental y notas de la visita.',
-    campos: [
-      { nombre: 'Acta firmada (archivo)', tipo: 'Archivo', obligatorio: false },
-      { nombre: 'Observaciones generales', tipo: 'Texto largo', obligatorio: false },
-    ],
-  },
-  {
-    id: 'trazabilidad',
-    titulo: 'Trazabilidad',
-    icono: '🔒',
-    descripcion: 'Campos automáticos de auditoría (no editables por el técnico).',
-    campos: [
-      { nombre: 'Encuestador (creación)', tipo: 'Usuario', obligatorio: true },
-      { nombre: 'Fecha de registro', tipo: 'Automático', obligatorio: true },
-      { nombre: 'Usuario de modificación', tipo: 'Automático', obligatorio: false },
-      { nombre: 'Usuario de validación', tipo: 'Automático', obligatorio: false },
-    ],
-  },
-];
-
-// ── Componente de sección colapsable ──────────────────────────────────────── //
-
-const SeccionPreview: React.FC<{ seccion: SeccionInfo }> = ({ seccion }) => {
-  const [abierta, setAbierta] = useState(false);
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <button
-        onClick={() => setAbierta(!abierta)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xl">{seccion.icono}</span>
-          <div>
-            <h3 className="text-sm font-bold text-gray-900">{seccion.titulo}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{seccion.descripcion}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-gray-400">
-            {seccion.campos.length} campos
-          </span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className={`h-4 w-4 text-gray-400 transition-transform ${abierta ? 'rotate-180' : ''}`}
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </button>
-
-      {abierta && (
-        <div className="border-t border-gray-100 px-5 py-3">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-gray-400 uppercase tracking-wider">
-                <th className="text-left py-2 font-medium">Campo</th>
-                <th className="text-left py-2 font-medium">Tipo</th>
-                <th className="text-center py-2 font-medium">Obligatorio</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {seccion.campos.map(campo => (
-                <tr key={campo.nombre}>
-                  <td className="py-2 text-gray-700 font-medium">{campo.nombre}</td>
-                  <td className="py-2 text-gray-500">{campo.tipo}</td>
-                  <td className="py-2 text-center">
-                    {campo.obligatorio ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600">
-                        Obligatorio
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                        Opcional
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-};
+import { useConfigCamposVisitaTecnica } from '../hooks/useConfigCamposVisitaTecnica';
+import { SeccionCard } from '../components/registro-hogar/config/SeccionCard';
+import { SECCIONES_VISITA } from '../components/visita-tecnica/config/secciones-data-visita';
 
 // ── Página principal ──────────────────────────────────────────────────────── //
 
 export const VisitaTecnicaConfigPage: React.FC = () => {
   const navigate = useNavigate();
   const { id: programaId, etapaId } = useParams<{ id: string; etapaId: string }>();
-  const queryClient = useQueryClient();
-  const [accionExito, setAccionExito] = useState<string | null>(null);
 
   // Datos de la etapa
   const { data: etapas, isLoading: isLoadingEtapas } = useQuery({
@@ -163,40 +31,26 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
   });
 
   const etapa = etapas?.find(e => String(e.id) === etapaId);
-  const isPublicado = etapa?.formulario_estado === 'PUBLICADO';
+  const isPublicado = etapa?.visita_tecnica_publicado === true;
+
+  // Configuración de campos
+  const {
+    configCampos,
+    isLoading: isLoadingConfig,
+    isSaving,
+    saveError,
+    isDirty,
+    updateCampo,
+    saveConfig,
+    resetConfig,
+  } = useConfigCamposVisitaTecnica(etapaId);
 
   // Lista de visitas de esta etapa
   const { data: visitas = [] } = useVisitasEtapa2(
     etapaId ? { etapa: Number(etapaId) } : undefined,
   );
 
-  // Publicar / inhabilitar
-  const invalidar = () => {
-    void queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) });
-  };
-
-  const publicarMutation = useMutation({
-    mutationFn: () => etapaRepository.publicarVisitaTecnica(Number(etapaId)),
-    onSuccess: () => {
-      invalidar();
-      setAccionExito('Formulario publicado. Los técnicos visitantes ya pueden acceder al formulario de visita.');
-    },
-  });
-
-  const inhabilitarMutation = useMutation({
-    mutationFn: () => etapaRepository.inhabilitarVisitaTecnica(Number(etapaId)),
-    onSuccess: () => {
-      invalidar();
-      setAccionExito('Formulario inhabilitado. El acceso de técnicos fue suspendido.');
-    },
-  });
-
-  const isPending = publicarMutation.isPending || inhabilitarMutation.isPending;
-  const actionError =
-    (publicarMutation.isError ? (publicarMutation.error instanceof Error ? publicarMutation.error.message : 'Error al publicar') : null) ??
-    (inhabilitarMutation.isError ? (inhabilitarMutation.error instanceof Error ? inhabilitarMutation.error.message : 'Error al inhabilitar') : null);
-
-  if (isLoadingEtapas || !etapa) {
+  if (isLoadingEtapas || isLoadingConfig || !etapa) {
     return (
       <div className="flex items-center justify-center min-h-64">
         <svg className="animate-spin h-7 w-7 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -235,33 +89,37 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
         </span>
       </div>
 
-      {/* Banner éxito */}
-      {accionExito && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
-          <p className="text-sm text-green-700">{accionExito}</p>
-          <button onClick={() => setAccionExito(null)} className="text-green-400 hover:text-green-700 font-bold text-lg leading-none flex-shrink-0">&times;</button>
-        </div>
-      )}
-
       {/* Banner error */}
-      {actionError && (
+      {saveError && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-          {actionError}
+          {saveError}
         </div>
       )}
 
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700">
-        Este formulario tiene <strong>4 secciones predefinidas</strong> que el técnico visitante
-        completará durante la visita. Una vez publicada la etapa, los técnicos con visitas
-        asignadas podrán acceder al formulario desde <strong>Mis Visitas</strong>.
+        El formulario tiene <strong>{SECCIONES_VISITA.length} secciones</strong>. Expanda cada sección para
+        configurar qué campos son <strong>obligatorios</strong> u opcionales y cuáles están <strong>activos</strong>.
+        Guarde antes de publicar. Una vez publicada, los técnicos con visitas asignadas podrán acceder
+        desde <strong>Mis Visitas</strong>.
       </div>
 
-      {/* Secciones del formulario */}
+      {/* Secciones configurables */}
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-bold text-gray-800">Secciones del formulario</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-gray-800">Secciones del formulario</h2>
+          {isDirty && (
+            <span className="text-xs text-amber-600 font-medium">Cambios sin guardar</span>
+          )}
+        </div>
         {SECCIONES_VISITA.map(seccion => (
-          <SeccionPreview key={seccion.id} seccion={seccion} />
+          <SeccionCard
+            key={seccion.id}
+            seccion={seccion}
+            configCampos={configCampos}
+            onConfigChange={updateCampo}
+            readOnly={isSaving}
+          />
         ))}
       </section>
 
@@ -322,7 +180,28 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
       </section>
 
       {/* Barra de acciones */}
-      <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-200">
+      <div className="flex items-center justify-between gap-3 pt-2 border-t border-gray-200 flex-wrap">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={!isDirty || isSaving}
+            onClick={saveConfig}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-sm transition-colors"
+          >
+            {isSaving ? 'Guardando...' : 'Guardar configuración'}
+          </button>
+          {isDirty && (
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={resetConfig}
+              className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-40"
+            >
+              Descartar
+            </button>
+          )}
+        </div>
+
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -330,25 +209,6 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
         >
           Volver
         </button>
-        {isPublicado ? (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => { setAccionExito(null); inhabilitarMutation.mutate(); }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-sm transition-colors"
-          >
-            {inhabilitarMutation.isPending ? 'Inhabilitando...' : 'Inhabilitar acceso'}
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => { setAccionExito(null); publicarMutation.mutate(); }}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold shadow-sm transition-colors"
-          >
-            {publicarMutation.isPending ? 'Publicando...' : 'Publicar etapa'}
-          </button>
-        )}
       </div>
     </div>
   );

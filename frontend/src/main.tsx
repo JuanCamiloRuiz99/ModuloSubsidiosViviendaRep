@@ -7,6 +7,33 @@ import App from "./App";
 import "./styles/index.css";
 import "leaflet/dist/leaflet.css";
 
+// ── Workaround: React DOM reconciliation error ──────────────────────────── //
+// React 19 + React Router v7 puede generar "removeChild" / "insertBefore"
+// durante transiciones de ruta cuando el DOM real diverge del virtual DOM.
+// Referencia: https://github.com/facebook/react/issues/17256
+if (typeof Node !== "undefined") {
+  const origRemoveChild = Node.prototype.removeChild;
+  // @ts-expect-error – override nativo
+  Node.prototype.removeChild = function <T extends Node>(child: T): T {
+    if (child.parentNode !== this) {
+      return child;
+    }
+    return origRemoveChild.call(this, child) as T;
+  };
+
+  const origInsertBefore = Node.prototype.insertBefore;
+  // @ts-expect-error – override nativo
+  Node.prototype.insertBefore = function <T extends Node>(
+    newNode: T,
+    refNode: Node | null,
+  ): T {
+    if (refNode && refNode.parentNode !== this) {
+      return newNode;
+    }
+    return origInsertBefore.call(this, newNode, refNode) as T;
+  };
+}
+
 // Crear instancia de QueryClient
 const queryClient = new QueryClient({
   defaultOptions: {

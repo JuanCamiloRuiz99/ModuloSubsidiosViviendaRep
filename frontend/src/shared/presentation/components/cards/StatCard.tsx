@@ -8,7 +8,7 @@ import React from 'react';
 interface StatCardProps {
   title: string;
   value: number;
-  color: 'blue' | 'green' | 'purple' | 'orange' | 'red';
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'teal';
   description?: string;
   onClick?: () => void;
 }
@@ -43,6 +43,12 @@ const colorClasses = {
     bg: 'bg-red-50',
     text: 'text-red-600',
     badge: 'bg-red-100 text-red-700',
+  },
+  teal: {
+    border: 'border-l-4 border-teal-500',
+    bg: 'bg-teal-50',
+    text: 'text-teal-600',
+    badge: 'bg-teal-100 text-teal-700',
   },
 };
 

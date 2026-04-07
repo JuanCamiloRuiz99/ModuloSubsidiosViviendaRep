@@ -96,6 +96,8 @@ export interface PostulanteRow {
   tipo_predio:     string;
   direccion:       string;
   total_miembros:  number;
+  visita_id:       number | null;
+  funcionario_asignado: { id: number; nombre: string } | null;
 }
 
 export interface PostulanteDetalle extends PostulanteRow {

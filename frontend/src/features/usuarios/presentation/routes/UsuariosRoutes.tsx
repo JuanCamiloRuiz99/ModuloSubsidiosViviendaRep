@@ -9,7 +9,7 @@ import { UsuariosPage } from '../pages';
 const UsuariosRoutes: React.FC = () => {
   return (
     <Routes>
-      <Route path="/" element={<UsuariosPage />} />
+      <Route index element={<UsuariosPage />} />
     </Routes>
   );
 };

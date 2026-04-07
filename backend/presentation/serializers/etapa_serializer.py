@@ -9,6 +9,8 @@ class EtapaSerializer(serializers.ModelSerializer):
     formulario_configurado = serializers.SerializerMethodField()
     formulario_estado = serializers.SerializerMethodField()
     registro_hogar_publicado = serializers.SerializerMethodField()
+    visita_tecnica_publicado = serializers.SerializerMethodField()
+    gestion_documental_publicado = serializers.SerializerMethodField()
 
     class Meta:
         model = Etapa
@@ -25,8 +27,12 @@ class EtapaSerializer(serializers.ModelSerializer):
             'formulario_configurado',
             'formulario_estado',
             'registro_hogar_publicado',
+            'visita_tecnica_publicado',
+            'gestion_documental_publicado',
+            'finalizada',
+            'fecha_finalizacion',
         ]
-        read_only_fields = ['fecha_creacion', 'fecha_modificacion', 'activo_logico']
+        read_only_fields = ['fecha_creacion', 'fecha_modificacion', 'activo_logico', 'finalizada', 'fecha_finalizacion']
 
     def get_formulario_configurado(self, obj):
         return FormularioEtapa.objects.filter(etapa=obj).exists()
@@ -40,5 +46,17 @@ class EtapaSerializer(serializers.ModelSerializer):
     def get_registro_hogar_publicado(self, obj):
         try:
             return obj.config_registro_hogar.publicado
+        except Exception:
+            return False
+
+    def get_visita_tecnica_publicado(self, obj):
+        try:
+            return obj.config_visita_tecnica.publicado
+        except Exception:
+            return False
+
+    def get_gestion_documental_publicado(self, obj):
+        try:
+            return obj.config_gestion_documental.publicado
         except Exception:
             return False

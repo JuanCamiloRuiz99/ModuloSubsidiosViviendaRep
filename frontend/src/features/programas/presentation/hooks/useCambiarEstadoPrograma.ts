@@ -13,8 +13,13 @@ export const useCambiarEstadoPrograma = () => {
   return useMutation({
     mutationFn: ({ id, nuevoEstado }: { id: string; nuevoEstado: string }) =>
       programaService.cambiarEstado(new CambiarEstadoProgramaDTO(id, nuevoEstado)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROGRAMAS_QUERY_KEY });
+    onSuccess: (_data, { id }) => {
+      // Invalidar la lista de programas
+      void queryClient.invalidateQueries({ queryKey: PROGRAMAS_QUERY_KEY });
+      // Invalidar el programa individual (usado en GestionarEtapasPage)
+      void queryClient.invalidateQueries({ queryKey: ['programa', id] });
+      // Invalidar las etapas de este programa (cuando el backend las despublica)
+      void queryClient.invalidateQueries({ queryKey: ['etapas', id] });
     },
   });
 };

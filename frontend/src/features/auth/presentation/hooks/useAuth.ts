@@ -29,8 +29,10 @@ export function useAuth() {
       // Redirigir según rol
       if (result.user.rol === 3) {
         navigate('/mis-visitas', { replace: true });
+      } else if (result.user.rol === 2) {
+        navigate('/mis-postulaciones', { replace: true });
       } else {
-        navigate('/', { replace: true });
+        navigate('/dashboard', { replace: true });
       }
     },
   });

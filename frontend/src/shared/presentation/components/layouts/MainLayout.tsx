@@ -21,7 +21,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard',            icon: '📊', path: '/' },
+  { label: 'Dashboard',            icon: '📊', path: '/dashboard' },
   { label: 'Programa de Subsidio', icon: '🏠', path: '/programas',   roles: [1, 2] },
   { label: 'Postulantes',          icon: '👥', path: '/postulantes', roles: [1, 2] },
   { label: 'Visitas',              icon: '📋', path: '/visitas',     roles: [1, 2] },
@@ -46,12 +46,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Main Content with Sidebar */}
       <div className="flex flex-1">
         {/* Sidebar Navigation */}
-        <aside className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-lg border-r border-blue-700">
+        <aside className="w-64 bg-gradient-to-b from-alcaldia-dark to-alcaldia-blue text-white shadow-lg border-r border-alcaldia-dark">
           <nav className="pt-6 px-4">
             {navItems.map((item) => {
-              const isActive = item.path === '/'
-                ? pathname === '/'
-                : pathname.startsWith(item.path);
+              const isActive = pathname.startsWith(item.path);
               return (
               <Link
                 key={item.path}
@@ -60,8 +58,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   flex items-center gap-3 px-4 py-3 mb-2 rounded-lg transition-all duration-200
                   ${
                     isActive
-                      ? 'bg-orange-500 text-white font-semibold shadow-md'
-                      : 'text-blue-100 hover:bg-blue-700 hover:text-white'
+                      ? 'bg-alcaldia-yellow text-alcaldia-dark font-semibold shadow-md'
+                      : 'text-white/80 hover:bg-alcaldia-blue hover:text-white'
                   }
                 `}
               >

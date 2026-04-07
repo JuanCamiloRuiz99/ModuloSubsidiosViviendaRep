@@ -24,6 +24,8 @@ export const GestionarEtapasPage: React.FC = () => {
     queryKey: ['programa', id],
     queryFn: () => programaService.obtener(new ObtenerProgramaDTO(id!)),
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   if (!id) {
@@ -61,6 +63,7 @@ export const GestionarEtapasPage: React.FC = () => {
       programaId={id}
       programaNombre={programa.nombre}
       programaDescripcion={programa.descripcion}
+      programaEstado={programa.estado}
       onVolver={() => navigate('/programas')}
     />
   );

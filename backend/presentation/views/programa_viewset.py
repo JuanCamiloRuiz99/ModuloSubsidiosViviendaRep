@@ -1,30 +1,56 @@
 """
-ViewSet para la entidad Programa
+ViewSet para la entidad Programa.
 
-Proporciona endpoints REST para CRUD operations
+Delega la lógica de negocio al Application Service (DDD).
+Mantiene sólo la responsabilidad de serialización HTTP.
 """
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from infrastructure.database.models import Programa
-from infrastructure.database.repositories.programa_repository import ProgramaRepository
+
+from infrastructure.database.models import Programa, FormularioEtapa, ConfigRegistroHogar
+from infrastructure.database.repositories.programa_repository import DjangoProgramaRepository
+from application.programas import ProgramaApplicationService
 from presentation.serializers.programa_serializer import ProgramaSerializer
+from domain.programas import ProgramaNoEncontradoException, ProgramaDatosInvalidosException
+from shared.exceptions import InvalidStateTransitionException
+
+
+def _despublicar_etapas_programa(id_programa: int):
+    """Callback: despublica formularios y config al inhabilitar un programa."""
+    try:
+        programa_orm = Programa.objects.get(id=id_programa)
+    except Programa.DoesNotExist:
+        return
+    etapa_ids = programa_orm.etapas.values_list('id', flat=True)
+    FormularioEtapa.objects.filter(
+        etapa_id__in=etapa_ids, estado='PUBLICADO'
+    ).update(estado='BORRADOR', fecha_publicacion=None)
+    ConfigRegistroHogar.objects.filter(
+        etapa_id__in=etapa_ids, publicado=True
+    ).update(publicado=False)
 
 
 class ProgramaViewSet(viewsets.ModelViewSet):
-    """ViewSet para gestionar Programas"""
-    
+    """ViewSet para gestionar Programas."""
+
     queryset = Programa.objects.all()
     serializer_class = ProgramaSerializer
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        repo = DjangoProgramaRepository()
+        self.app_service = ProgramaApplicationService(
+            programa_repository=repo,
+            on_programa_inhabilitado=_despublicar_etapas_programa,
+        )
+
     def get_queryset(self):
-        """Filtrar programas por estado si se proporciona como parámetro"""
+        """Filtrar programas por estado si se proporciona como parámetro."""
         queryset = Programa.objects.all()
         estado = self.request.query_params.get('estado', None)
-        
         if estado:
             queryset = queryset.filter(estado__iexact=estado)
-        
         return queryset
 
     @action(detail=True, methods=['post'])
@@ -34,34 +60,32 @@ class ProgramaViewSet(viewsets.ModelViewSet):
         Endpoint: POST /api/programas/{id}/cambiar_estado/
         Body: {"nuevo_estado": "ACTIVO"} (BORRADOR, ACTIVO, INHABILITADO)
         """
-        programa = self.get_object()
         nuevo_estado = request.data.get('nuevo_estado')
-
-        # Validar que se proporcione un estado
         if not nuevo_estado:
             return Response(
                 {'error': 'Debe proporcionar un nuevo_estado'},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validar que sea un estado válido
-        estados_validos = [choice[0] for choice in Programa.ESTADOS]
-        if nuevo_estado not in estados_validos:
+        try:
+            resultado = self.app_service.cambiar_estado(int(pk), nuevo_estado)
+        except ProgramaNoEncontradoException:
             return Response(
-                {'error': f'Estado inválido. Estados válidos: {", ".join(estados_validos)}'},
-                status=status.HTTP_400_BAD_REQUEST
+                {'error': f'Programa con ID {pk} no encontrado'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except (InvalidStateTransitionException, ValueError) as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        programa.estado = nuevo_estado
-        programa.save()
-
-        serializer = self.get_serializer(programa)
         return Response(
             {
                 'mensaje': f'El programa fue actualizado a estado {nuevo_estado}',
-                'programa': serializer.data
+                'programa': resultado,
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
 
     @action(detail=False, methods=['get'])
@@ -70,13 +94,5 @@ class ProgramaViewSet(viewsets.ModelViewSet):
         Obtener estadísticas de programas.
         Endpoint: GET /api/programas/estadisticas/
         """
-        stats = ProgramaRepository.obtener_estadisticas()
-        
-        return Response({
-            'total': stats['total'],
-            'por_estado': {
-                'BORRADOR': stats['BORRADOR'],
-                'ACTIVO': stats['ACTIVO'],
-                'INHABILITADO': stats['INHABILITADO'],
-            }
-        })
+        resultado = self.app_service.obtener_estadisticas()
+        return Response(resultado)

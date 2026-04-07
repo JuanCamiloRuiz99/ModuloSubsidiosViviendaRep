@@ -80,6 +80,9 @@ const TIPO_DOCUMENTO_VISITA = [
   { value: 'RECIBO_AGUA', label: 'Recibo de agua' },
   { value: 'RECIBO_ENERGIA', label: 'Recibo de energía' },
   { value: 'RECIBO_GAS', label: 'Recibo de gas' },
+  { value: 'FOTO_VISITA', label: 'Foto de la visita' },
+  { value: 'INFORME_TECNICO', label: 'Informe técnico' },
+  { value: 'ACTA_VISITA', label: 'Acta de visita' },
   { value: 'OTRO', label: 'Otro' },
 ];
 
@@ -214,7 +217,7 @@ export default function FormularioVisitaEtapa2Page() {
   });
 
   const etapaVT: EtapaData | undefined = etapas?.find(
-    e => e.modulo_principal === 'VISITA_TECNICA' && e.formulario_estado === 'PUBLICADO',
+    e => e.modulo_principal === 'VISITA_TECNICA' && e.visita_tecnica_publicado === true,
   );
 
   // 3. Buscar visita etapa 2 existente para esta postulación
@@ -589,16 +592,39 @@ export default function FormularioVisitaEtapa2Page() {
           </p>
 
           {/* Foto del predio */}
-          <SectionTitle icon="📷" title="Foto del Predio" />
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL de foto del predio</label>
-            <input
-              type="text"
-              value={(datosHogar.foto_predio_url as string) || ''}
-              onChange={e => setDH('foto_predio_url', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 text-sm"
-              placeholder="URL o referencia de la foto del predio"
-            />
+          <SectionTitle icon="📷" title="Fotos de la Visita" />
+          <div className="mb-6 space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">URL o referencia de foto del predio</label>
+              <input
+                type="text"
+                value={(datosHogar.foto_predio_url as string) || ''}
+                onChange={e => setDH('foto_predio_url', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 text-sm"
+                placeholder="URL o referencia de la foto del predio"
+              />
+            </div>
+            {isExistente && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800 mb-2 font-medium">
+                  📸 También puede subir fotos como documentos adjuntos usando el tipo
+                  <span className="font-semibold"> "Foto de la visita"</span> en la sección de Documentos de abajo.
+                </p>
+                {/* Mostrar fotos ya subidas */}
+                {documentos.filter(d => d.activo_logico && d.tipo_documento === 'FOTO_VISITA').length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-blue-600 font-medium mb-1">Fotos subidas:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {documentos.filter(d => d.activo_logico && d.tipo_documento === 'FOTO_VISITA').map(d => (
+                        <span key={d.id} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                          📷 {d.nombre_archivo || `Foto #${d.id}`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Tenencia */}
