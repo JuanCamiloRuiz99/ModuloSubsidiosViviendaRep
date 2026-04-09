@@ -19,6 +19,7 @@ import L from 'leaflet';
 import { HeaderPanel, StatCard } from '../../../../shared/presentation/components';
 import { usePostulantes } from '../../../postulantes/presentation/hooks/use-postulantes';
 import { useProgramas } from '../../../programas/presentation/hooks/useProgramas';
+import { useEtapas } from '../../../programas/presentation/hooks/useEtapas';
 import { useTecnicos } from '../hooks/use-tecnicos';
 import { useCrearVisita } from '../hooks/use-visita-actions';
 import { CrearVisitaDTO } from '../../application/dtos/visita-in';
@@ -56,6 +57,12 @@ export const VisitasPage: React.FC = () => {
   // ── Filtro por programa ──
   const [selectedProgramaId, setSelectedProgramaId] = useState<string>('');
   const { programas, isLoading: loadingProgramas } = useProgramas({ estado: 'activo', pageSize: 100 });
+
+  // Verificar si el programa tiene etapa de visita técnica activada
+  const { data: etapasPrograma = [], isLoading: loadingEtapas } = useEtapas(selectedProgramaId);
+  const tieneVisitaTecnica = etapasPrograma.some(
+    e => e.modulo_principal === 'VISITA_TECNICA' && e.visita_tecnica_publicado && !e.finalizada,
+  );
 
   const { postulantes, isLoading, error, refetch } = usePostulantes(
     'APROBADA',
@@ -365,6 +372,28 @@ export const VisitasPage: React.FC = () => {
         </select>
       </div>
 
+      {/* ── Aviso: programa sin etapa de visita técnica ── */}
+      {selectedProgramaId && !loadingEtapas && !tieneVisitaTecnica && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 flex-shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Este programa <strong>no tiene una etapa de Visita Técnica activada</strong>. Debe activar la etapa desde la configuración del programa para poder gestionar visitas.</span>
+        </div>
+      )}
+
+      {/* ── Contenido que requiere programa seleccionado ── */}
+      {!selectedProgramaId ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center text-gray-400">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          <p className="text-sm font-medium text-gray-500">Selecciona un programa para comenzar</p>
+          <p className="text-xs text-gray-400 mt-1">El mapa y las estadísticas se cargarán una vez que selecciones un programa</p>
+        </div>
+      ) : (
+      <>
+
       {/* ── Tarjetas estadísticas ── */}
       <div className={`grid grid-cols-1 gap-4 mb-6 ${activeTab === 'gestion' ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         <StatCard title="Aprobadas" value={totalAprobadas} color="green" description="Postulaciones aprobadas" />
@@ -458,15 +487,7 @@ export const VisitasPage: React.FC = () => {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'gestion' && (
         <>
-          {!selectedProgramaId ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <p className="text-sm font-medium text-gray-500">Selecciona un programa para comenzar</p>
-              <p className="text-xs text-gray-400 mt-1">Las postulaciones aprobadas se agruparán por cercanía geográfica</p>
-            </div>
-          ) : totalUbicadas === 0 && !isGeocoding ? (
+          {totalUbicadas === 0 && !isGeocoding ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -606,6 +627,9 @@ export const VisitasPage: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      </>
       )}
 
       {/* ── Nota informativa ── */}

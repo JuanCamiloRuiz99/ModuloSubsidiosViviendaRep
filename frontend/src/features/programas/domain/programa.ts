@@ -8,6 +8,7 @@ export enum EstadoPrograma {
   BORRADOR = 'BORRADOR',
   ACTIVO = 'ACTIVO',
   INHABILITADO = 'INHABILITADO',
+  CULMINADO = 'CULMINADO',
 }
 
 export class Programa extends BaseEntity {

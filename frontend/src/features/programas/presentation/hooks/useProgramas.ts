@@ -58,6 +58,7 @@ export const useProgramas = (filter: UseProgramasFilter = {}) => {
       activos: rawStats?.por_estado?.ACTIVO ?? 0,
       borradores: rawStats?.por_estado?.BORRADOR ?? 0,
       inhabilitados: rawStats?.por_estado?.INHABILITADO ?? 0,
+      culminados: rawStats?.por_estado?.CULMINADO ?? 0,
     },
   };
 };

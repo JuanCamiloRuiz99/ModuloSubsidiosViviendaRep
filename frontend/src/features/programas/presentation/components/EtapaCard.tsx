@@ -12,6 +12,7 @@ interface EtapaCardProps {
 
 export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, programaEstado }) => {
   const isProgramaActivo = programaEstado === 'ACTIVO';
+  const isProgramaCulminado = programaEstado === 'CULMINADO';
   const navigate = useNavigate();
   const cfg = MODULO_CONFIG[etapa.modulo_principal] ?? MODULO_CONFIG.REGISTRO_HOGAR;
   const isConfigurado =
@@ -51,7 +52,7 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm p-5 border-2 ${isPublicado ? 'border-green-300' : isConfigurado ? 'border-amber-200' : 'border-blue-200'}`}>
+    <div className={`bg-white rounded-xl shadow-sm p-5 border-2 ${etapa.finalizada ? 'border-red-400' : isPublicado ? 'border-green-300' : isConfigurado ? 'border-amber-200' : 'border-blue-200'}`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
@@ -119,7 +120,7 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
 
       {/* Actions */}
       <div className="flex items-center gap-3 flex-wrap">
-        <button
+        {!isProgramaCulminado && <button
           onClick={() => {
             const ruta = etapa.modulo_principal === 'REGISTRO_HOGAR'
               ? `/programas/${programaId}/etapas/${etapa.id}/registro-hogar`
@@ -137,10 +138,9 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           {isConfigurado ? 'Editar Formulario' : 'Configurar Formulario'}
-        </button>
+        </button>}
 
-        {isPublicado && (
-          etapa.modulo_principal === 'VISITA_TECNICA' ? (
+        {!isProgramaCulminado && isPublicado && etapa.modulo_principal === 'VISITA_TECNICA' && (
             <button
               onClick={() => navigate(`/programas/${programaId}/etapas/${etapa.id}/visita-tecnica`)}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
@@ -152,18 +152,9 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
               </svg>
               Ver visitas
             </button>
-          ) : etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ? (
-            <button
-              onClick={() => navigate(`/programas/${programaId}/etapas/${etapa.id}/gestion-documental/documentos`)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors"
-              title="Gestionar documentos del proceso interno"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Gestionar documentos
-            </button>
-          ) : (
+        )}
+
+        {!isProgramaCulminado && isPublicado && (etapa.modulo_principal === 'REGISTRO_HOGAR' || etapa.modulo_principal !== 'VISITA_TECNICA' && etapa.modulo_principal !== 'GESTION_DOCUMENTAL_INTERNA') && (
             <a
               href={etapa.modulo_principal === 'REGISTRO_HOGAR' ? `/registro-hogar/${etapa.id}` : `/formulario/${etapa.id}`}
               target="_blank"
@@ -176,10 +167,9 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
               </svg>
               Ver formulario
             </a>
-          )
         )}
 
-        {!etapa.finalizada && <button
+        {!isProgramaCulminado && !etapa.finalizada && <button
           onClick={handleTogglePublicacion}
           disabled={!isConfigurado || isToggling || (!isProgramaActivo && !isPublicado)}
           title={
@@ -224,7 +214,7 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
         </button>}
 
         {/* Terminar Etapa: solo cuando programa ACTIVO, etapa publicada y NO finalizada */}
-        {isProgramaActivo && isPublicado && !etapa.finalizada && (
+        {!isProgramaCulminado && isProgramaActivo && isPublicado && !etapa.finalizada && (
           <button
             onClick={handleTerminarEtapa}
             disabled={terminarMutation.isPending}
@@ -245,8 +235,8 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
           </button>
         )}
 
-        {/* Reactivar Etapa: solo cuando la etapa está finalizada */}
-        {etapa.finalizada && (
+        {/* Reactivar Etapa: solo cuando la etapa está finalizada y programa NO culminado */}
+        {etapa.finalizada && !isProgramaCulminado && (
           <button
             onClick={handleReactivarEtapa}
             disabled={reactivarMutation.isPending}
@@ -265,6 +255,27 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
             )}
             {reactivarMutation.isPending ? 'Reactivando...' : 'Reactivar Etapa'}
           </button>
+        )}
+
+        {/* Sorteo: solo cuando GESTION_DOCUMENTAL_INTERNA está finalizada */}
+        {etapa.finalizada && etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' && (
+          <button
+            onClick={() => navigate(`/programas/${programaId}/sorteo`)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors cursor-pointer"
+            title={isProgramaCulminado ? 'Ver resultados del sorteo' : 'Realizar sorteo de beneficiarios'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+            </svg>
+            Sorteo
+          </button>
+        )}
+
+        {/* Banner cuando programa está culminado */}
+        {isProgramaCulminado && etapa.modulo_principal !== 'GESTION_DOCUMENTAL_INTERNA' && (
+          <span className="text-xs text-indigo-600 font-medium bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-200">
+            Programa culminado
+          </span>
         )}
       </div>
 

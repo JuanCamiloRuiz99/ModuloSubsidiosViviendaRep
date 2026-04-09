@@ -58,6 +58,14 @@ const estadoConfig: Record<string, {
     accionEstado: EstadoPrograma.ACTIVO,
     accionClass: 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200',
   },
+  [EstadoPrograma.CULMINADO]: {
+    border: 'border-l-4 border-indigo-500',
+    badge: 'bg-indigo-100 text-indigo-700',
+    label: 'Culminado',
+    accionLabel: '',
+    accionEstado: '',
+    accionClass: 'hidden',
+  },
 };
 
 const formatDate = (date?: Date | string): string => {
@@ -136,6 +144,7 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
         >
           Editar
         </button>
+        {programa.estado !== EstadoPrograma.CULMINADO && (
         <button
           onClick={() => onCambiarEstado?.(programa.id, config.accionEstado)}
           disabled={isEstadoPending}
@@ -154,6 +163,8 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
             </>
           ) : config.accionLabel}
         </button>
+        )}
+        {programa.estado !== EstadoPrograma.CULMINADO && (
         <button
           onClick={() => onDelete?.(programa.id)}
           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
@@ -172,6 +183,7 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
             />
           </svg>
         </button>
+        )}
       </div>
 
       {/* Gestionar Etapas */}

@@ -14,6 +14,7 @@ class Programa(models.Model):
         ('BORRADOR', 'Borrador'),
         ('ACTIVO', 'Activo'),
         ('INHABILITADO', 'Inhabilitado'),
+        ('CULMINADO', 'Culminado'),
     ]
 
     nombre = models.CharField(max_length=255, blank=False)
@@ -713,13 +714,17 @@ class Postulacion(models.Model):
     """
 
     ESTADOS = [
-        ('REGISTRADA',       'Registrada'),
-        ('EN_REVISION',      'En revisión'),
-        ('SUBSANACION',      'Subsanación'),
-        ('VISITA_PENDIENTE', 'Visita pendiente'),
-        ('VISITA_REALIZADA', 'Visita realizada'),
-        ('APROBADA',         'Aprobada'),
-        ('RECHAZADA',        'Rechazada'),
+        ('REGISTRADA',          'Registrada'),
+        ('EN_REVISION',         'En revisión'),
+        ('SUBSANACION',         'Subsanación'),
+        ('VISITA_PENDIENTE',    'Visita pendiente'),
+        ('VISITA_REALIZADA',       'Visita realizada'),
+        ('DOCUMENTOS_INCOMPLETOS', 'Documentos incompletos'),
+        ('DOCUMENTOS_CARGADOS',    'Documentos cargados'),
+        ('BENEFICIADO',         'Beneficiado'),
+        ('NO_BENEFICIARIO',     'No beneficiario'),
+        ('APROBADA',            'Aprobada'),
+        ('RECHAZADA',           'Rechazada'),
     ]
 
     programa = models.ForeignKey(
@@ -734,7 +739,7 @@ class Postulacion(models.Model):
         blank=True,
         related_name='postulaciones',
     )
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='EN_REVISION')
+    estado = models.CharField(max_length=25, choices=ESTADOS, default='EN_REVISION')
     fecha_postulacion = models.DateTimeField(auto_now_add=True)
 
     usuario_creacion = models.ForeignKey(

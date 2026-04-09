@@ -30,6 +30,8 @@ export function useDocumentosProcesoInterno(postulacionId: number | string | und
       documentoProcesoInternoRepository.subir(payload),
     onSuccess: () => {
       if (postulacionId) void queryClient.invalidateQueries({ queryKey: docsProcesoInternoQueryKey(postulacionId) });
+      // Refrescar lista de postulantes para que refleje el cambio de estado
+      void queryClient.invalidateQueries({ queryKey: ['postulantes-registro-hogar'] });
     },
   });
 
@@ -40,6 +42,7 @@ export function useDocumentosProcesoInterno(postulacionId: number | string | und
       documentoProcesoInternoRepository.eliminar(docId),
     onSuccess: () => {
       if (postulacionId) void queryClient.invalidateQueries({ queryKey: docsProcesoInternoQueryKey(postulacionId) });
+      void queryClient.invalidateQueries({ queryKey: ['postulantes-registro-hogar'] });
     },
   });
 

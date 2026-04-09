@@ -8,3 +8,4 @@ export { VisitaTecnicaConfigPage }     from './VisitaTecnicaConfigPage';
 export { GestionDocumentalConfigPage } from './GestionDocumentalConfigPage';
 export { GestionDocumentalPage }       from './GestionDocumentalPage';
 export { GestionDocumentosPostulacionPage } from './GestionDocumentosPostulacionPage';
+export { SorteoPage } from './SorteoPage';

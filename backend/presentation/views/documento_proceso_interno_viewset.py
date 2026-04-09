@@ -15,6 +15,9 @@ from presentation.serializers.documento_proceso_interno_serializer import (
     DocumentoProcesoInternoUploadSerializer,
 )
 
+# Todos los tipos de documento son obligatorios para completar la Etapa 3.
+TIPOS_REQUERIDOS = {choice[0] for choice in DocumentoProcesoInterno.TIPO_DOCUMENTO_CHOICES}
+
 
 class DocumentoProcesoInternoViewSet(viewsets.ModelViewSet):
     """
@@ -59,6 +62,21 @@ class DocumentoProcesoInternoViewSet(viewsets.ModelViewSet):
             observaciones=d.get('observaciones', ''),
         )
 
+        # ── Auto-transición de estado según documentos cargados ─────── #
+        postulacion = Postulacion.objects.get(pk=d['postulacion'])
+        if postulacion.estado in ('VISITA_REALIZADA', 'DOCUMENTOS_INCOMPLETOS'):
+            tipos_cargados = set(
+                DocumentoProcesoInterno.objects
+                .filter(postulacion_id=d['postulacion'], activo_logico=True)
+                .values_list('tipo_documento', flat=True)
+            )
+            if TIPOS_REQUERIDOS.issubset(tipos_cargados):
+                postulacion.estado = 'DOCUMENTOS_CARGADOS'
+                postulacion.save(update_fields=['estado'])
+            elif tipos_cargados and postulacion.estado != 'DOCUMENTOS_INCOMPLETOS':
+                postulacion.estado = 'DOCUMENTOS_INCOMPLETOS'
+                postulacion.save(update_fields=['estado'])
+
         return Response(
             DocumentoProcesoInternoSerializer(doc).data,
             status=status.HTTP_201_CREATED,
@@ -75,5 +93,20 @@ class DocumentoProcesoInternoViewSet(viewsets.ModelViewSet):
         doc.activo_logico = False
         doc.fecha_eliminacion = timezone.now()
         doc.save(update_fields=['activo_logico', 'fecha_eliminacion'])
+
+        # ── Revertir estado si ya no tiene todos los documentos ────── #
+        postulacion = doc.postulacion
+        if postulacion.estado in ('DOCUMENTOS_CARGADOS', 'DOCUMENTOS_INCOMPLETOS'):
+            tipos_cargados = set(
+                DocumentoProcesoInterno.objects
+                .filter(postulacion_id=postulacion.pk, activo_logico=True)
+                .values_list('tipo_documento', flat=True)
+            )
+            if not tipos_cargados:
+                postulacion.estado = 'VISITA_REALIZADA'
+                postulacion.save(update_fields=['estado'])
+            elif not TIPOS_REQUERIDOS.issubset(tipos_cargados):
+                postulacion.estado = 'DOCUMENTOS_INCOMPLETOS'
+                postulacion.save(update_fields=['estado'])
 
         return Response({'detail': 'Documento eliminado correctamente.'})

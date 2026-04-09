@@ -204,7 +204,13 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
                           return (
                             <div key={campo.id} className="px-4 py-3 flex items-start justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-800">{campo.label}</p>
+                                <p className="text-sm font-medium text-gray-800">
+                                  {campo.label}
+                                  {campo.requeridoPorDefecto && <span className="text-red-500 ml-0.5">*</span>}
+                                </p>
+                                {docs.length === 0 && campo.requeridoPorDefecto && (
+                                  <p className="text-xs text-red-400 mt-0.5">Obligatorio — Debe cargar este documento</p>
+                                )}
                                 {docs.length > 0 ? (
                                   <div className="mt-1.5 flex flex-col gap-1.5">
                                     {docs.map(doc => (
@@ -231,9 +237,9 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
                                       </div>
                                     ))}
                                   </div>
-                                ) : (
+                                ) : !campo.requeridoPorDefecto ? (
                                   <p className="text-xs text-gray-400 mt-0.5">Sin documento cargado</p>
-                                )}
+                                ) : null}
                               </div>
                               <button
                                 onClick={() => openUpload(campo.id as TipoDocumentoProcesoInterno)}

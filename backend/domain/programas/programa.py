@@ -17,13 +17,15 @@ class EstadoPrograma(str, Enum):
     BORRADOR = 'BORRADOR'
     ACTIVO = 'ACTIVO'
     INHABILITADO = 'INHABILITADO'
+    CULMINADO = 'CULMINADO'
 
 
 # Transiciones de estado válidas
 TRANSICIONES_VALIDAS: dict[EstadoPrograma, list[EstadoPrograma]] = {
     EstadoPrograma.BORRADOR: [EstadoPrograma.ACTIVO],
-    EstadoPrograma.ACTIVO: [EstadoPrograma.INHABILITADO],
+    EstadoPrograma.ACTIVO: [EstadoPrograma.INHABILITADO, EstadoPrograma.CULMINADO],
     EstadoPrograma.INHABILITADO: [EstadoPrograma.ACTIVO],
+    EstadoPrograma.CULMINADO: [],
 }
 
 

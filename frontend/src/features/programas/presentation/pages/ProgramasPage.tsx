@@ -23,6 +23,7 @@ const FILTROS = [
   { label: 'Activos', value: 'ACTIVO' },
   { label: 'Borradores', value: 'BORRADOR' },
   { label: 'Inhabilitados', value: 'INHABILITADO' },
+  { label: 'Culminados', value: 'CULMINADO' },
 ] as const;
 
 export const ProgramasPage: React.FC = () => {
@@ -181,6 +182,7 @@ export const ProgramasPage: React.FC = () => {
           <StatCard title="Activos" value={stats.activos} color="green" />
           <StatCard title="Borradores" value={stats.borradores} color="orange" />
           <StatCard title="Inhabilitados" value={stats.inhabilitados} color="red" />
+          <StatCard title="Culminados" value={stats.culminados} color="purple" />
         </div>
 
         {/* Filtros por estado */}

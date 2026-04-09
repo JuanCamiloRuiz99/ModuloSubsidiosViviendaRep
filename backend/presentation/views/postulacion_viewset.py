@@ -11,12 +11,15 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models import Count, Q
 from django.http import FileResponse
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from infrastructure.database.models import (
+    Programa,
+    Etapa,
     Postulacion,
     DocumentoGestionHogar,
     DocumentoMiembroHogar,
@@ -39,13 +42,17 @@ TIPO_DOCUMENTO_LABELS = {
 }
 
 ESTADO_LABELS = {
-    'REGISTRADA':       'Registrada',
-    'EN_REVISION':      'En revisión',
-    'SUBSANACION':      'Subsanación',
-    'VISITA_PENDIENTE': 'Visita pendiente',
-    'VISITA_REALIZADA': 'Visita realizada',
-    'APROBADA':         'Aprobada',
-    'RECHAZADA':        'Rechazada',
+    'REGISTRADA':             'Registrada',
+    'EN_REVISION':            'En revisión',
+    'SUBSANACION':            'Subsanación',
+    'VISITA_PENDIENTE':       'Visita pendiente',
+    'VISITA_REALIZADA':       'Visita realizada',
+    'DOCUMENTOS_INCOMPLETOS': 'Documentos incompletos',
+    'DOCUMENTOS_CARGADOS':    'Documentos cargados',
+    'BENEFICIADO':            'Beneficiado',
+    'NO_BENEFICIARIO':        'No beneficiario',
+    'APROBADA':               'Aprobada',
+    'RECHAZADA':              'Rechazada',
 }
 
 ZONA_LABELS = {
@@ -125,7 +132,11 @@ class PostulacionViewSet(viewsets.GenericViewSet):
 
         estado = request.query_params.get('estado')
         if estado:
-            qs = qs.filter(postulacion__estado=estado)
+            estados = [e.strip() for e in estado.split(',') if e.strip()]
+            if len(estados) == 1:
+                qs = qs.filter(postulacion__estado=estados[0])
+            else:
+                qs = qs.filter(postulacion__estado__in=estados)
 
         funcionario_id = request.query_params.get('funcionario_id')
         if funcionario_id:
@@ -864,3 +875,235 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             )
 
         return Response(resultados)
+
+    # ────────────────────────────────────────────────────────────────────── #
+    # Sorteo de beneficiarios
+    # ────────────────────────────────────────────────────────────────────── #
+
+    @action(detail=False, methods=['get'], url_path='sorteo/estado')
+    def sorteo_estado(self, request):
+        """
+        Consulta el estado del sorteo para un programa.
+        GET /api/postulaciones/sorteo/estado/?programa_id=6
+        Retorna:
+          - elegibles: cantidad de postulaciones con DOCUMENTOS_CARGADOS
+          - ya_sorteadas: cantidad con BENEFICIADO o NO_BENEFICIARIO
+          - sorteo_realizado: bool
+        """
+        programa_id = request.query_params.get('programa_id')
+        if not programa_id:
+            return Response({'detail': 'Se requiere programa_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        elegibles = Postulacion.objects.filter(
+            programa_id=programa_id, estado='DOCUMENTOS_CARGADOS',
+        ).count()
+
+        ya_sorteadas = Postulacion.objects.filter(
+            programa_id=programa_id, estado__in=['BENEFICIADO', 'NO_BENEFICIARIO'],
+        ).count()
+
+        return Response({
+            'elegibles': elegibles,
+            'ya_sorteadas': ya_sorteadas,
+            'sorteo_realizado': ya_sorteadas > 0,
+        })
+
+    @action(detail=False, methods=['get'], url_path='sorteo/elegibles')
+    def sorteo_elegibles(self, request):
+        """
+        Lista las postulaciones elegibles (DOCUMENTOS_CARGADOS) para un programa.
+        GET /api/postulaciones/sorteo/elegibles/?programa_id=6
+        """
+        programa_id = request.query_params.get('programa_id')
+        if not programa_id:
+            return Response({'detail': 'Se requiere programa_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        postulaciones = (
+            Postulacion.objects
+            .filter(programa_id=programa_id, estado='DOCUMENTOS_CARGADOS')
+            .select_related('programa')
+            .order_by('id')
+        )
+
+        # Obtener datos del ciudadano asociado a cada postulación
+        resultados = []
+        for p in postulaciones:
+            hogar = (
+                GestionHogarEtapa1.objects
+                .filter(postulacion=p)
+                .select_related('ciudadano')
+                .first()
+            )
+            ciudadano = hogar.ciudadano if hogar else None
+            resultados.append({
+                'id': p.id,
+                'numero_radicado': hogar.numero_radicado if hogar else f'POST-{p.id}',
+                'nombre': (
+                    f'{ciudadano.primer_nombre} {ciudadano.primer_apellido}'
+                    if ciudadano else f'Postulación #{p.id}'
+                ),
+                'documento': (
+                    f'{ciudadano.numero_documento}'
+                    if ciudadano else ''
+                ),
+                'fecha_postulacion': str(p.fecha_postulacion) if p.fecha_postulacion else '',
+            })
+
+        return Response(resultados)
+
+    @action(detail=False, methods=['get'], url_path='sorteo/resultados')
+    def sorteo_resultados(self, request):
+        """
+        Devuelve los resultados del sorteo ya realizado.
+        GET /api/postulaciones/sorteo/resultados/?programa_id=6
+        """
+        programa_id = request.query_params.get('programa_id')
+        if not programa_id:
+            return Response({'detail': 'Se requiere programa_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        beneficiados = list(
+            Postulacion.objects.filter(programa_id=programa_id, estado='BENEFICIADO').order_by('id')
+        )
+        no_beneficiarios = list(
+            Postulacion.objects.filter(programa_id=programa_id, estado='NO_BENEFICIARIO').order_by('id')
+        )
+
+        if not beneficiados and not no_beneficiarios:
+            return Response({'detail': 'No se ha realizado un sorteo para este programa.'}, status=status.HTTP_404_NOT_FOUND)
+
+        def _build(postulaciones, estado_label):
+            result = []
+            for p in postulaciones:
+                hogar = (
+                    GestionHogarEtapa1.objects
+                    .filter(postulacion=p)
+                    .select_related('ciudadano')
+                    .first()
+                )
+                ciudadano = hogar.ciudadano if hogar else None
+                result.append({
+                    'id': p.id,
+                    'numero_radicado': hogar.numero_radicado if hogar else f'POST-{p.id}',
+                    'nombre': (
+                        f'{ciudadano.primer_nombre} {ciudadano.primer_apellido}'
+                        if ciudadano else f'Postulación #{p.id}'
+                    ),
+                    'estado': estado_label,
+                })
+            return result
+
+        return Response({
+            'total_elegibles': len(beneficiados) + len(no_beneficiarios),
+            'total_beneficiados': len(beneficiados),
+            'total_no_beneficiarios': len(no_beneficiarios),
+            'beneficiados': _build(beneficiados, 'BENEFICIADO'),
+            'no_beneficiarios': _build(no_beneficiarios, 'NO_BENEFICIARIO'),
+        })
+
+    @action(detail=False, methods=['post'], url_path='sorteo/ejecutar')
+    def sorteo_ejecutar(self, request):
+        """
+        Ejecuta el sorteo aleatorio. Solo se puede hacer UNA VEZ por programa.
+        POST /api/postulaciones/sorteo/ejecutar/
+        Body: { "programa_id": 6, "cantidad_beneficiarios": 10 }
+        """
+        import random
+
+        programa_id = request.data.get('programa_id')
+        cantidad = request.data.get('cantidad_beneficiarios')
+
+        if not programa_id or cantidad is None:
+            return Response(
+                {'detail': 'Se requiere programa_id y cantidad_beneficiarios.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cantidad = int(cantidad)
+        if cantidad < 1:
+            return Response(
+                {'detail': 'La cantidad de beneficiarios debe ser al menos 1.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verificar que no se haya hecho sorteo antes
+        ya_sorteadas = Postulacion.objects.filter(
+            programa_id=programa_id, estado__in=['BENEFICIADO', 'NO_BENEFICIARIO'],
+        ).exists()
+        if ya_sorteadas:
+            return Response(
+                {'detail': 'Ya se realizó un sorteo para este programa. No se puede repetir.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Obtener elegibles
+        elegibles = list(
+            Postulacion.objects.filter(
+                programa_id=programa_id, estado='DOCUMENTOS_CARGADOS',
+            ).order_by('id')
+        )
+
+        if not elegibles:
+            return Response(
+                {'detail': 'No hay postulaciones con documentos cargados para sortear.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cantidad > len(elegibles):
+            return Response(
+                {'detail': f'La cantidad de beneficiarios ({cantidad}) supera el total de elegibles ({len(elegibles)}).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Sorteo aleatorio
+        random.shuffle(elegibles)
+        beneficiados = elegibles[:cantidad]
+        no_beneficiados = elegibles[cantidad:]
+
+        # Actualizar estados
+        ids_beneficiados = [p.id for p in beneficiados]
+        ids_no_beneficiados = [p.id for p in no_beneficiados]
+
+        Postulacion.objects.filter(id__in=ids_beneficiados).update(estado='BENEFICIADO')
+        Postulacion.objects.filter(id__in=ids_no_beneficiados).update(estado='NO_BENEFICIARIO')
+
+        # Culminar el programa y finalizar todas sus etapas
+        try:
+            programa_obj = Programa.objects.get(id=programa_id)
+            programa_obj.estado = 'CULMINADO'
+            programa_obj.save(update_fields=['estado'])
+            Etapa.objects.filter(programa_id=programa_id, finalizada=False).update(
+                finalizada=True,
+                fecha_finalizacion=timezone.now(),
+            )
+        except Programa.DoesNotExist:
+            pass
+
+        # Construir resultado con nombres
+        def _build_result(postulaciones, estado_label):
+            result = []
+            for p in postulaciones:
+                hogar = (
+                    GestionHogarEtapa1.objects
+                    .filter(postulacion=p)
+                    .select_related('ciudadano')
+                    .first()
+                )
+                ciudadano = hogar.ciudadano if hogar else None
+                result.append({
+                    'id': p.id,
+                    'numero_radicado': hogar.numero_radicado if hogar else f'POST-{p.id}',
+                    'nombre': (
+                        f'{ciudadano.primer_nombre} {ciudadano.primer_apellido}'
+                        if ciudadano else f'Postulación #{p.id}'
+                    ),
+                    'estado': estado_label,
+                })
+            return result
+
+        return Response({
+            'total_elegibles': len(elegibles),
+            'total_beneficiados': len(beneficiados),
+            'total_no_beneficiarios': len(no_beneficiados),
+            'beneficiados': _build_result(beneficiados, 'BENEFICIADO'),
+            'no_beneficiarios': _build_result(no_beneficiados, 'NO_BENEFICIARIO'),
+        })

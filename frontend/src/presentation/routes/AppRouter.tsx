@@ -10,6 +10,7 @@ import VisitasRoutes from '../../features/visitas/presentation/routes/VisitasRou
 import MisVisitasRoutes from '../../features/visitas/presentation/routes/MisVisitasRoutes';
 import MisPostulacionesRoutes from '../../features/postulantes/presentation/routes/MisPostulacionesRoutes';
 import LlamadasRoutes from '../../features/llamadas/presentation/routes/LlamadasRoutes';
+import GestionDocumentalInternaRoutes from '../../features/postulaciones/presentation/routes/GestionDocumentalInternaRoutes';
 import { FormularioPublicoPage, RegistroHogarPage } from '../../features/programas/presentation/pages';
 import { LoginPage, PrivateRoute } from '../../features/auth';
 import { MainLayout } from '../../shared/presentation/components';
@@ -47,6 +48,7 @@ export default function AppRouter() {
                   <Route path="mis-visitas/*" element={<PrivateRoute allowedRoles={[3]}><MisVisitasRoutes /></PrivateRoute>} />
                   <Route path="mis-postulaciones/*" element={<PrivateRoute allowedRoles={[2]}><MisPostulacionesRoutes /></PrivateRoute>} />
                   <Route path="llamadas/*" element={<PrivateRoute allowedRoles={[1, 2]}><LlamadasRoutes /></PrivateRoute>} />
+                  <Route path="documentos-internos/*" element={<PrivateRoute allowedRoles={[1, 2]}><GestionDocumentalInternaRoutes /></PrivateRoute>} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </MainLayout>

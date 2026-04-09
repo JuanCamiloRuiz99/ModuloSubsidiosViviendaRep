@@ -9,6 +9,7 @@ export const ESTADO_PROGRAMA = {
   BORRADOR: 'BORRADOR',
   ACTIVO: 'ACTIVO',
   INHABILITADO: 'INHABILITADO',
+  CULMINADO: 'CULMINADO',
 } as const;
 
 export type EstadoPrograma = typeof ESTADO_PROGRAMA[keyof typeof ESTADO_PROGRAMA];
@@ -17,35 +18,45 @@ export const ESTADO_PROGRAMA_LABELS: Record<EstadoPrograma, string> = {
   BORRADOR: 'Borrador',
   ACTIVO: 'Activo',
   INHABILITADO: 'Inhabilitado',
+  CULMINADO: 'Culminado',
 };
 
 export const ESTADO_PROGRAMA_COLORS: Record<EstadoPrograma, string> = {
   BORRADOR: '#FFC107',
   ACTIVO: '#28A745',
   INHABILITADO: '#DC3545',
+  CULMINADO: '#6366F1',
 };
 
 // Estados de Postulaciones (sincronizado con backend Postulacion.ESTADOS)
 export const ESTADO_POSTULACION = {
-  REGISTRADA:       'REGISTRADA',
-  EN_REVISION:      'EN_REVISION',
-  SUBSANACION:      'SUBSANACION',
-  VISITA_PENDIENTE: 'VISITA_PENDIENTE',
-  VISITA_REALIZADA: 'VISITA_REALIZADA',
-  APROBADA:         'APROBADA',
-  RECHAZADA:        'RECHAZADA',
+  REGISTRADA:          'REGISTRADA',
+  EN_REVISION:         'EN_REVISION',
+  SUBSANACION:         'SUBSANACION',
+  VISITA_PENDIENTE:    'VISITA_PENDIENTE',
+  VISITA_REALIZADA:        'VISITA_REALIZADA',
+  DOCUMENTOS_INCOMPLETOS:  'DOCUMENTOS_INCOMPLETOS',
+  DOCUMENTOS_CARGADOS:     'DOCUMENTOS_CARGADOS',
+  BENEFICIADO:         'BENEFICIADO',
+  NO_BENEFICIARIO:     'NO_BENEFICIARIO',
+  APROBADA:            'APROBADA',
+  RECHAZADA:           'RECHAZADA',
 } as const;
 
 export type EstadoPostulacion = typeof ESTADO_POSTULACION[keyof typeof ESTADO_POSTULACION];
 
 export const ESTADO_POSTULACION_LABELS: Record<EstadoPostulacion, string> = {
-  REGISTRADA:       'Registrada',
-  EN_REVISION:      'En revisión',
-  SUBSANACION:      'Subsanación',
-  VISITA_PENDIENTE: 'Visita pendiente',
-  VISITA_REALIZADA: 'Visita realizada',
-  APROBADA:         'Aprobada',
-  RECHAZADA:        'Rechazada',
+  REGISTRADA:          'Registrada',
+  EN_REVISION:         'En revisión',
+  SUBSANACION:         'Subsanación',
+  VISITA_PENDIENTE:    'Visita pendiente',
+  VISITA_REALIZADA:        'Visita realizada',
+  DOCUMENTOS_INCOMPLETOS:  'Documentos incompletos',
+  DOCUMENTOS_CARGADOS:     'Documentos cargados',
+  BENEFICIADO:         'Beneficiado',
+  NO_BENEFICIARIO:     'No beneficiario',
+  APROBADA:            'Aprobada',
+  RECHAZADA:           'Rechazada',
 };
 
 // Estados de Visitas

@@ -23,6 +23,7 @@ function getNavItems(): NavItem[] {
       { label: 'Mis Postulaciones', icon: '📋', path: '/mis-postulaciones' },
       { label: 'Llamadas', icon: '📞', path: '/llamadas' },
       { label: 'Programa de subsidio', icon: '🏠', path: '/programas' },
+      { label: 'Documentos Internos', icon: '📄', path: '/gestion-documental-interna' },
     ];
   }
 
@@ -40,6 +41,7 @@ function getNavItems(): NavItem[] {
     { label: 'Postulantes', icon: '👥', path: '/postulantes' },
     { label: 'Llamadas', icon: '📞', path: '/llamadas' },
     { label: 'Visitas', icon: '📋', path: '/visitas' },
+    { label: 'Documentos Internos', icon: '📄', path: '/gestion-documental-interna' },
     { label: 'Usuarios y Roles', icon: '👤', path: '/usuarios' },
   ];
 }

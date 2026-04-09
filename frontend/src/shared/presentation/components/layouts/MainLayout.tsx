@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard',            icon: '📊', path: '/dashboard' },
   { label: 'Programa de Subsidio', icon: '🏠', path: '/programas',   roles: [1, 2] },
   { label: 'Postulantes',          icon: '👥', path: '/postulantes', roles: [1, 2] },
+  { label: 'Documentos Internos',  icon: '📄', path: '/documentos-internos', roles: [1, 2] },
   { label: 'Visitas',              icon: '📋', path: '/visitas',     roles: [1, 2] },
   { label: 'Mis Visitas',          icon: '📍', path: '/mis-visitas', roles: [3] },
   { label: 'Usuarios y Roles',     icon: '👤', path: '/usuarios',   roles: [1] },

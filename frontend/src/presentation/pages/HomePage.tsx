@@ -538,13 +538,17 @@ function FormularioNoDisponible() {
 }
 
 const ESTADO_COLORS: Record<string, string> = {
-  REGISTRADA:       'bg-blue-100 text-blue-800',
-  EN_REVISION:      'bg-yellow-100 text-yellow-800',
-  SUBSANACION:      'bg-orange-100 text-orange-800',
-  VISITA_PENDIENTE: 'bg-purple-100 text-purple-800',
-  VISITA_REALIZADA: 'bg-indigo-100 text-indigo-800',
-  APROBADA:         'bg-green-100 text-green-800',
-  RECHAZADA:        'bg-red-100 text-red-800',
+  REGISTRADA:          'bg-blue-100 text-blue-800',
+  EN_REVISION:         'bg-yellow-100 text-yellow-800',
+  SUBSANACION:         'bg-orange-100 text-orange-800',
+  VISITA_PENDIENTE:    'bg-purple-100 text-purple-800',
+  VISITA_REALIZADA:        'bg-indigo-100 text-indigo-800',
+  DOCUMENTOS_INCOMPLETOS:  'bg-teal-100 text-teal-800',
+  DOCUMENTOS_CARGADOS:     'bg-cyan-100 text-cyan-800',
+  BENEFICIADO:             'bg-emerald-100 text-emerald-800',
+  NO_BENEFICIARIO:         'bg-rose-100 text-rose-800',
+  APROBADA:                'bg-green-100 text-green-800',
+  RECHAZADA:           'bg-red-100 text-red-800',
 };
 
 function EstadoBadge({ estado, label }: { estado: string; label: string }) {

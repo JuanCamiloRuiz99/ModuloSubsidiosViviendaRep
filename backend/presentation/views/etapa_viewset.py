@@ -645,6 +645,13 @@ class EtapaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Bloquear si el programa está CULMINADO
+        if etapa.programa.estado == 'CULMINADO':
+            return Response(
+                {'detail': 'No se puede reactivar una etapa de un programa culminado.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         etapa.finalizada = False
         etapa.fecha_finalizacion = None
         etapa.save(update_fields=['finalizada', 'fecha_finalizacion'])

@@ -66,7 +66,7 @@ export const SECCIONES_GESTION: SeccionConfig[] = [
         campos: [
           { id: 'RADICADO_CURADURIA',           label: 'Radicado de curaduría',                requeridoPorDefecto: true },
           { id: 'EXPENSA_RADICACION_INICIAL',    label: 'Expensa de radicación inicial',        requeridoPorDefecto: true },
-          { id: 'EXPENSA_LICENCIA_FINAL',        label: 'Expensa de licencia final',            requeridoPorDefecto: false },
+          { id: 'EXPENSA_LICENCIA_FINAL',        label: 'Expensa de licencia final',            requeridoPorDefecto: true },
           { id: 'PODER_AUTENTICADO',             label: 'Poder autenticado',                    requeridoPorDefecto: true },
         ],
       },
@@ -156,21 +156,21 @@ export const SECCIONES_GESTION: SeccionConfig[] = [
         titulo: 'Planos de levantamiento',
         campos: [
           { id: 'PLANOS_LEVANTAMIENTO_PDF',     label: 'Planos de levantamiento (PDF)',        requeridoPorDefecto: true },
-          { id: 'PLANOS_LEVANTAMIENTO_DWG',     label: 'Planos de levantamiento (DWG)',        requeridoPorDefecto: false },
+          { id: 'PLANOS_LEVANTAMIENTO_DWG',     label: 'Planos de levantamiento (DWG)',        requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Planos arquitectónicos',
         campos: [
           { id: 'PLANOS_ARQUITECTONICOS_PDF',   label: 'Planos arquitectónicos (PDF)',         requeridoPorDefecto: true },
-          { id: 'PLANOS_ARQUITECTONICOS_DWG',   label: 'Planos arquitectónicos (DWG)',         requeridoPorDefecto: false },
+          { id: 'PLANOS_ARQUITECTONICOS_DWG',   label: 'Planos arquitectónicos (DWG)',         requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Planos estructurales',
         campos: [
           { id: 'PLANOS_ESTRUCTURALES_PDF',     label: 'Planos estructurales (PDF)',           requeridoPorDefecto: true },
-          { id: 'PLANOS_ESTRUCTURALES_DWG',     label: 'Planos estructurales (DWG)',           requeridoPorDefecto: false },
+          { id: 'PLANOS_ESTRUCTURALES_DWG',     label: 'Planos estructurales (DWG)',           requeridoPorDefecto: true },
         ],
       },
     ],
@@ -198,9 +198,9 @@ export const SECCIONES_GESTION: SeccionConfig[] = [
       {
         titulo: 'Presupuesto y valla',
         campos: [
-          { id: 'FOTO_VALLA_CURADURIA',        label: 'Foto de valla de curaduría',           requeridoPorDefecto: false },
+          { id: 'FOTO_VALLA_CURADURIA',        label: 'Foto de valla de curaduría',           requeridoPorDefecto: true },
           { id: 'PRESUPUESTO_PDF',              label: 'Presupuesto de obra (PDF)',            requeridoPorDefecto: true },
-          { id: 'PRESUPUESTO_XLSX',             label: 'Presupuesto de obra (Excel)',          requeridoPorDefecto: false },
+          { id: 'PRESUPUESTO_XLSX',             label: 'Presupuesto de obra (Excel)',          requeridoPorDefecto: true },
         ],
       },
     ],
@@ -230,7 +230,7 @@ export const SECCIONES_GESTION: SeccionConfig[] = [
         campos: [
           { id: 'OFICIO_USO_SUELOS',             label: 'Oficio de uso de suelos',              requeridoPorDefecto: true },
           { id: 'CONCEPTO_GESTION_RIESGO',        label: 'Concepto de gestión de riesgo',        requeridoPorDefecto: true },
-          { id: 'RIESGO_INUNDACION_REMOCION',     label: 'Riesgo de inundación / remoción masa', requeridoPorDefecto: false },
+          { id: 'RIESGO_INUNDACION_REMOCION',     label: 'Riesgo de inundación / remoción masa', requeridoPorDefecto: true },
           { id: 'CERTIFICACION_AGUA',              label: 'Certificación de agua',                requeridoPorDefecto: true },
           { id: 'CERTIFICACION_ENERGIA',           label: 'Certificación de energía',             requeridoPorDefecto: true },
         ],
