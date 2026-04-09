@@ -19,7 +19,7 @@ export class CodigoPrograma {
 }
 
 export class EstadoProgramaVO {
-  private static readonly ESTADOS_VALIDOS = ['DRAFT', 'ACTIVO', 'CERRADO'];
+  private static readonly ESTADOS_VALIDOS = ['BORRADOR', 'ACTIVO', 'INHABILITADO', 'CULMINADO'];
 
   constructor(public readonly value: string) {
     if (!EstadoProgramaVO.ESTADOS_VALIDOS.includes(value)) {

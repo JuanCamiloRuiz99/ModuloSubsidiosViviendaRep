@@ -3,8 +3,8 @@ Configuración del admin de Django para visualizar modelos
 """
 from django.contrib import admin
 from .models import (
-    Programa, Etapa, Postulante, TipoDocumento,
-    FormularioEtapa, CampoFormulario, RespuestaFormulario, Ciudadano,
+    Programa, Etapa,
+    FormularioEtapa, CampoFormulario, Ciudadano,
 )
 
 
@@ -50,20 +50,6 @@ class EtapaAdmin(admin.ModelAdmin):
     readonly_fields = ('fecha_creacion', 'fecha_modificacion')
 
 
-@admin.register(TipoDocumento)
-class TipoDocumentoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'descripcion')
-    search_fields = ('nombre',)
-
-
-@admin.register(Postulante)
-class PostulanteAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'apellido', 'numero_documento', 'programa', 'estado', 'fecha_postulacion')
-    list_filter = ('estado', 'programa', 'fecha_postulacion')
-    search_fields = ('nombre', 'apellido', 'numero_documento', 'email')
-    readonly_fields = ('fecha_postulacion', 'fecha_actualizacion')
-
-
 @admin.register(FormularioEtapa)
 class FormularioEtapaAdmin(admin.ModelAdmin):
     list_display = ('etapa', 'estado', 'fecha_creacion', 'fecha_publicacion')
@@ -77,11 +63,3 @@ class CampoFormularioAdmin(admin.ModelAdmin):
     list_filter = ('obligatorio', 'formulario')
     search_fields = ('campo_catalogo',)
     ordering = ('formulario', 'orden')
-
-
-@admin.register(RespuestaFormulario)
-class RespuestaFormularioAdmin(admin.ModelAdmin):
-    list_display = ('postulante', 'formulario', 'campo_catalogo', 'fecha_respuesta')
-    list_filter = ('formulario', 'campo_catalogo')
-    search_fields = ('postulante__nombre', 'postulante__apellido', 'campo_catalogo')
-    readonly_fields = ('fecha_respuesta',)

@@ -7,6 +7,7 @@
 
 import React from 'react';
 import type { InfoHogarForm } from '../../../domain/registro-hogar.types';
+import { TIEMPO_RESIDENCIA_OPTIONS, COMUNAS_POPAYAN } from '../../../domain/registro-hogar.types';
 
 export type ErroresInfoHogar = Partial<Record<keyof InfoHogarForm, string>>;
 
@@ -90,20 +91,20 @@ export const SeccionInfoHogar: React.FC<Props> = ({ data, onChange, errores }) =
         <input
           type="text"
           value={data.departamento}
-          onChange={e => set('departamento', e.target.value)}
-          placeholder="Cauca"
-          className={inputCls(errores.departamento)}
+          readOnly
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
         />
+        <p className="mt-1 text-xs text-gray-400">Campo fijo — Alcaldía de Popayán</p>
       </Field>
 
       <Field label="Municipio" required error={errores.municipio}>
         <input
           type="text"
           value={data.municipio}
-          onChange={e => set('municipio', e.target.value)}
-          placeholder="Popayan"
-          className={inputCls(errores.municipio)}
+          readOnly
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
         />
+        <p className="mt-1 text-xs text-gray-400">Campo fijo — Alcaldía de Popayán</p>
       </Field>
 
       <Field label="Zona" required error={errores.zona}>
@@ -119,13 +120,16 @@ export const SeccionInfoHogar: React.FC<Props> = ({ data, onChange, errores }) =
       </Field>
 
       <Field label="Comuna / Corregimiento" error={errores.comuna}>
-        <input
-          type="text"
+        <select
           value={data.comuna}
           onChange={e => set('comuna', e.target.value)}
-          placeholder="Ej. Comuna 10 - La Candelaria"
           className={inputCls(errores.comuna)}
-        />
+        >
+          <option value="">Seleccione...</option>
+          {COMUNAS_POPAYAN.map(c => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
+        </select>
       </Field>
 
       <Field label="Barrio / Vereda" error={errores.barrio_vereda}>
@@ -247,13 +251,16 @@ export const SeccionInfoHogar: React.FC<Props> = ({ data, onChange, errores }) =
       <SectionHeader title="Información adicional" />
 
       <Field label="Tiempo de residencia en el predio" error={errores.tiempo_residencia}>
-        <input
-          type="text"
+        <select
           value={data.tiempo_residencia}
           onChange={e => set('tiempo_residencia', e.target.value)}
-          placeholder="Ej. 5 años"
           className={inputCls(errores.tiempo_residencia)}
-        />
+        >
+          <option value="">Seleccione...</option>
+          {TIEMPO_RESIDENCIA_OPTIONS.map(op => (
+            <option key={op.value} value={op.value}>{op.label}</option>
+          ))}
+        </select>
       </Field>
 
       <Field label="¿Tiene personas a cargo (dependientes)?" error={errores.tiene_dependientes}>

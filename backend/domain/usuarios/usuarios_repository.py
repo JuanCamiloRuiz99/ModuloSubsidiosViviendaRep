@@ -20,7 +20,7 @@ class UsuarioRepository(ABC):
     """
 
     @abstractmethod
-    async def crear(self, usuario: Usuario) -> Usuario:
+    def crear(self, usuario: Usuario) -> Usuario:
         """
         Crea un nuevo usuario
         
@@ -33,7 +33,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def actualizar(self, usuario: Usuario) -> Usuario:
+    def actualizar(self, usuario: Usuario) -> Usuario:
         """
         Actualiza un usuario existente
         
@@ -46,7 +46,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def obtener_por_id(self, id_usuario: int) -> Optional[Usuario]:
+    def obtener_por_id(self, id_usuario: int) -> Optional[Usuario]:
         """
         Obtiene un usuario por su ID
         
@@ -59,7 +59,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def obtener_por_correo(self, correo: str) -> Optional[Usuario]:
+    def obtener_por_correo(self, correo: str) -> Optional[Usuario]:
         """
         Obtiene un usuario por su correo
         
@@ -72,7 +72,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def obtener_todos(
+    def obtener_todos(
         self,
         filtros: Optional[Dict[str, Any]] = None,
         pagina: int = 1,
@@ -97,7 +97,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def obtener_por_rol(self, rol: str) -> List[Usuario]:
+    def obtener_por_rol(self, rol: str) -> List[Usuario]:
         """
         Obtiene todos los usuarios con un rol específico
         
@@ -110,7 +110,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def eliminar(self, id_usuario: int) -> bool:
+    def eliminar(self, id_usuario: int) -> bool:
         """
         Elimina un usuario (lógicamente)
         
@@ -123,7 +123,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def contar(self) -> int:
+    def contar(self) -> int:
         """
         Cuenta el total de usuarios activos
         
@@ -133,7 +133,7 @@ class UsuarioRepository(ABC):
         pass
 
     @abstractmethod
-    async def existe_correo(self, correo: str) -> bool:
+    def existe_correo(self, correo: str) -> bool:
         """
         Verifica si existe un usuario con un correo específico
         

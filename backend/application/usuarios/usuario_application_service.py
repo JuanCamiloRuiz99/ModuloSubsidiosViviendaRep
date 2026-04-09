@@ -77,7 +77,7 @@ class UsuarioApplicationService:
 
     # ============ Operaciones de Creación ============
 
-    async def crear_usuario(
+    def crear_usuario(
         self, input_dto: CrearUsuarioDTO
     ) -> Dict[str, Any]:
         """
@@ -100,14 +100,14 @@ class UsuarioApplicationService:
             input_dto.validar()
             
             # Verificar correo único
-            usuario_existente = await self.usuario_repository.obtener_por_correo(
+            usuario_existente = self.usuario_repository.obtener_por_correo(
                 input_dto.correo
             )
             if usuario_existente:
                 raise CorreoYaRegistradoException(input_dto.correo)
             
             # Ejecutar use case
-            usuario_dto = await self._crear_usuario_uc.execute(input_dto)
+            usuario_dto = self._crear_usuario_uc.execute(input_dto)
             
             logger.info(f"Usuario creado exitosamente: {usuario_dto.id_usuario}")
             return usuario_dto.to_dict()
@@ -118,7 +118,7 @@ class UsuarioApplicationService:
 
     # ============ Operaciones de Lectura ============
 
-    async def obtener_usuario(
+    def obtener_usuario(
         self, id_usuario: int
     ) -> Dict[str, Any]:
         """
@@ -137,7 +137,7 @@ class UsuarioApplicationService:
             logger.debug(f"Obteniendo usuario con ID: {id_usuario}")
             
             input_dto = ObtenerUsuarioDTO(id_usuario)
-            usuario_dto = await self._obtener_usuario_uc.execute(input_dto)
+            usuario_dto = self._obtener_usuario_uc.execute(input_dto)
             
             return usuario_dto.to_dict()
             
@@ -145,7 +145,7 @@ class UsuarioApplicationService:
             logger.error(f"Error al obtener usuario {id_usuario}: {str(e)}")
             raise
 
-    async def listar_usuarios(
+    def listar_usuarios(
         self,
         pagina: int = 1,
         tamaño_pagina: int = 10,
@@ -177,7 +177,7 @@ class UsuarioApplicationService:
                 activo=activo,
             )
             
-            lista_usuarios = await self._listar_usuarios_uc.execute(input_dto)
+            lista_usuarios = self._listar_usuarios_uc.execute(input_dto)
             
             return lista_usuarios.to_dict()
             
@@ -185,7 +185,7 @@ class UsuarioApplicationService:
             logger.error(f"Error al listar usuarios: {str(e)}")
             raise
 
-    async def obtener_estadisticas(self) -> Dict[str, Any]:
+    def obtener_estadisticas(self) -> Dict[str, Any]:
         """
         Obtiene estadísticas generales de usuarios
         
@@ -195,7 +195,7 @@ class UsuarioApplicationService:
         try:
             logger.debug("Obteniendo estadísticas de usuarios")
             
-            estadisticas = await self._estadisticas_uc.execute()
+            estadisticas = self._estadisticas_uc.execute()
             
             return estadisticas.to_dict()
             
@@ -205,7 +205,7 @@ class UsuarioApplicationService:
 
     # ============ Operaciones de Actualización ============
 
-    async def actualizar_usuario(
+    def actualizar_usuario(
         self,
         id_usuario: int,
         nombre_completo: Optional[str] = None,
@@ -239,7 +239,7 @@ class UsuarioApplicationService:
                 usuario_modificacion=usuario_modificacion,
             )
             
-            usuario_dto = await self._actualizar_usuario_uc.execute(input_dto)
+            usuario_dto = self._actualizar_usuario_uc.execute(input_dto)
             
             logger.info(f"Usuario actualizado: {id_usuario}")
             return usuario_dto.to_dict()
@@ -248,7 +248,7 @@ class UsuarioApplicationService:
             logger.error(f"Error al actualizar usuario {id_usuario}: {str(e)}")
             raise
 
-    async def cambiar_contraseña(
+    def cambiar_contraseña(
         self,
         id_usuario: int,
         password_hash: str,
@@ -277,7 +277,7 @@ class UsuarioApplicationService:
                 usuario_modificacion=usuario_modificacion,
             )
             
-            usuario_dto = await self._cambiar_contraseña_uc.execute(input_dto)
+            usuario_dto = self._cambiar_contraseña_uc.execute(input_dto)
             
             logger.info(f"Contraseña cambiada para usuario: {id_usuario}")
             return usuario_dto.to_dict()
@@ -288,7 +288,7 @@ class UsuarioApplicationService:
 
     # ============ Operaciones de Eliminación ============
 
-    async def eliminar_usuario(
+    def eliminar_usuario(
         self, id_usuario: int
     ) -> bool:
         """
@@ -306,7 +306,7 @@ class UsuarioApplicationService:
         try:
             logger.info(f"Eliminando usuario: {id_usuario}")
             
-            resultado = await self._eliminar_usuario_uc.execute(id_usuario)
+            resultado = self._eliminar_usuario_uc.execute(id_usuario)
             
             if resultado:
                 logger.info(f"Usuario eliminado: {id_usuario}")
@@ -321,19 +321,19 @@ class UsuarioApplicationService:
 
     # ============ Hiperoperaciones ============
 
-    async def activar_usuario(self, id_usuario: int) -> Dict[str, Any]:
+    def activar_usuario(self, id_usuario: int) -> Dict[str, Any]:
         """Activa un usuario inactivo"""
-        return await self.actualizar_usuario(
+        return self.actualizar_usuario(
             id_usuario=id_usuario, activo=True
         )
 
-    async def desactivar_usuario(self, id_usuario: int) -> Dict[str, Any]:
+    def desactivar_usuario(self, id_usuario: int) -> Dict[str, Any]:
         """Desactiva un usuario activo"""
-        return await self.actualizar_usuario(
+        return self.actualizar_usuario(
             id_usuario=id_usuario, activo=False
         )
 
-    async def cambiar_rol_usuario(
+    def cambiar_rol_usuario(
         self,
         id_usuario: int,
         nuevo_rol: str,
@@ -364,7 +364,7 @@ class UsuarioApplicationService:
                 usuario_modificacion=usuario_modificacion,
             )
             
-            usuario_dto = await self._cambiar_rol_uc.execute(input_dto)
+            usuario_dto = self._cambiar_rol_uc.execute(input_dto)
             
             logger.info(f"Rol cambiado para usuario {id_usuario}")
             return usuario_dto.to_dict()

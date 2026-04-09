@@ -10,8 +10,6 @@ export class CambiarEstadoUsuarioUseCase {
 
   async execute(dto: CambiarEstadoDTO): Promise<any> {
     try {
-      console.log(`� CambiarEstadoUsuarioUseCase - ID: ${dto.id}, nuevo estado: ${dto.nuevoEstado}`);
-
       // Usar endpoint dedicado /activar/ o /desactivar/
       const nuevoEstado = dto.nuevoEstado as 'activo' | 'inactivo';
       const usuarioActualizado = await this.usuarioRepository.cambiarEstado(dto.id, nuevoEstado);

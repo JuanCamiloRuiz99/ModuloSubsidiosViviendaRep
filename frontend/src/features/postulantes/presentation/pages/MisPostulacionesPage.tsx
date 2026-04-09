@@ -68,13 +68,15 @@ export default function MisPostulacionesPage() {
 
   // Contadores
   const contadores = useMemo(() => {
-    const c = { total: 0, registradas: 0, revision: 0, subsanacion: 0, aprobadas: 0 };
+    const c = { total: 0, registradas: 0, revision: 0, subsanacion: 0, aprobadas: 0, beneficiados: 0, rechazadas: 0 };
     for (const p of postulantes) {
       c.total++;
-      if (p.estado === 'REGISTRADA')  c.registradas++;
-      if (p.estado === 'EN_REVISION') c.revision++;
-      if (p.estado === 'SUBSANACION') c.subsanacion++;
-      if (p.estado === 'APROBADA')    c.aprobadas++;
+      if (p.estado === 'REGISTRADA')      c.registradas++;
+      if (p.estado === 'EN_REVISION')     c.revision++;
+      if (p.estado === 'SUBSANACION')     c.subsanacion++;
+      if (p.estado === 'APROBADA')        c.aprobadas++;
+      if (p.estado === 'BENEFICIADO')     c.beneficiados++;
+      if (p.estado === 'RECHAZADA')       c.rechazadas++;
     }
     return c;
   }, [postulantes]);
@@ -137,12 +139,14 @@ export default function MisPostulacionesPage() {
       </div>
 
       {/* ── Tarjetas resumen ── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
         <StatCard label="Total asignadas" value={contadores.total} color="bg-gray-100 text-gray-700" />
         <StatCard label="Registradas" value={contadores.registradas} color="bg-blue-50 text-blue-700" />
         <StatCard label="En revisión" value={contadores.revision} color="bg-yellow-50 text-yellow-700" />
         <StatCard label="Subsanación" value={contadores.subsanacion} color="bg-amber-50 text-amber-700" />
         <StatCard label="Aprobadas" value={contadores.aprobadas} color="bg-green-50 text-green-700" />
+        <StatCard label="Beneficiados" value={contadores.beneficiados} color="bg-purple-50 text-purple-700" />
+        <StatCard label="Rechazadas" value={contadores.rechazadas} color="bg-red-50 text-red-700" />
       </div>
 
       {/* ── Filtros ── */}

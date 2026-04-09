@@ -34,6 +34,7 @@ export const ESTADO_POSTULACION = {
   EN_REVISION:         'EN_REVISION',
   SUBSANACION:         'SUBSANACION',
   VISITA_PENDIENTE:    'VISITA_PENDIENTE',
+  VISITA_PROGRAMADA:   'VISITA_PROGRAMADA',
   VISITA_REALIZADA:        'VISITA_REALIZADA',
   DOCUMENTOS_INCOMPLETOS:  'DOCUMENTOS_INCOMPLETOS',
   DOCUMENTOS_CARGADOS:     'DOCUMENTOS_CARGADOS',
@@ -50,6 +51,7 @@ export const ESTADO_POSTULACION_LABELS: Record<EstadoPostulacion, string> = {
   EN_REVISION:         'En revisión',
   SUBSANACION:         'Subsanación',
   VISITA_PENDIENTE:    'Visita pendiente',
+  VISITA_PROGRAMADA:   'Visita programada',
   VISITA_REALIZADA:        'Visita realizada',
   DOCUMENTOS_INCOMPLETOS:  'Documentos incompletos',
   DOCUMENTOS_CARGADOS:     'Documentos cargados',
@@ -70,9 +72,9 @@ export const ESTADO_VISITA = {
 export type EstadoVisita = typeof ESTADO_VISITA[keyof typeof ESTADO_VISITA];
 
 export const ESTADO_VISITA_LABELS: Record<EstadoVisita, string> = {
-  PROGRAMADA: 'Programada',
+  PROGRAMADA: 'Visita Pendiente',
   REALIZANDO: 'Realizando',
-  COMPLETADA: 'Completada',
+  COMPLETADA: 'Visita Realizada',
   CANCELADA: 'Cancelada',
 };
 

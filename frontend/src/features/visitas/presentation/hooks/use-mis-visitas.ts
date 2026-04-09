@@ -6,17 +6,19 @@ import { useQuery } from '@tanstack/react-query';
 import { AxiosVisitaRepository } from '../../infrastructure';
 import { storageService } from '../../../../core/services';
 
-export function useMisVisitas() {
+export function useMisVisitas(programaId?: string) {
   const user = storageService.getUser();
   const userId = user?.id as string | undefined;
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['visitas', 'mis-visitas', userId],
+    queryKey: ['visitas', 'mis-visitas', userId, programaId],
     queryFn: () => {
       const repository = new AxiosVisitaRepository();
-      return repository.findAll({ page: 1, pageSize: 500, inspectorId: userId }).then(r => r.items);
+      const criteria: Record<string, unknown> = { page: 1, pageSize: 500, inspectorId: userId };
+      if (programaId) criteria.programaId = programaId;
+      return repository.findAll(criteria).then(r => r.items);
     },
-    enabled: !!userId,
+    enabled: !!userId && !!programaId,
   });
 
   return {

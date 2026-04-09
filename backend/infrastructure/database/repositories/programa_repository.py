@@ -8,6 +8,8 @@ la entidad de dominio y el modelo ORM.
 import math
 from typing import Any, Dict, List, Optional
 
+from django.db.models import Count
+
 from domain.programas import Programa, EstadoPrograma, ProgramaRepositoryInterface
 from ..models import Programa as ProgramaORM
 
@@ -126,12 +128,17 @@ class DjangoProgramaRepository(ProgramaRepositoryInterface):
         return qs.count()
 
     def obtener_estadisticas(self) -> Dict[str, Any]:
-        total = ProgramaORM.objects.count()
+        por_estado = dict(
+            ProgramaORM.objects.values_list('estado')
+            .annotate(c=Count('id'))
+            .values_list('estado', 'c')
+        )
         return {
-            "total": total,
-            "BORRADOR": ProgramaORM.objects.filter(estado="BORRADOR").count(),
-            "ACTIVO": ProgramaORM.objects.filter(estado="ACTIVO").count(),
-            "INHABILITADO": ProgramaORM.objects.filter(estado="INHABILITADO").count(),
+            "total": sum(por_estado.values()),
+            "BORRADOR": por_estado.get("BORRADOR", 0),
+            "ACTIVO": por_estado.get("ACTIVO", 0),
+            "INHABILITADO": por_estado.get("INHABILITADO", 0),
+            "CULMINADO": por_estado.get("CULMINADO", 0),
         }
 
 

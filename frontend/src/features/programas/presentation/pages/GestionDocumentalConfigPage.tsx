@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { etapaRepository } from '../../infrastructure/persistence/axios-etapa-repository';
 import { etapasQueryKey } from '../hooks/useEtapas';
 import { useConfigCamposGestionDocumental } from '../hooks/useConfigCamposGestionDocumental';
@@ -42,6 +42,18 @@ export const GestionDocumentalConfigPage: React.FC = () => {
     saveConfig,
     resetConfig,
   } = useConfigCamposGestionDocumental(etapaId);
+
+  const queryClient = useQueryClient();
+
+  const publicarMutation = useMutation({
+    mutationFn: () => etapaRepository.publicarGestionDocumental(Number(etapaId)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) }),
+  });
+
+  const inhabilitarMutation = useMutation({
+    mutationFn: () => etapaRepository.inhabilitarGestionDocumental(Number(etapaId)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) }),
+  });
 
   if (isLoadingEtapas || isLoadingConfig || !etapa) {
     return (
@@ -111,7 +123,7 @@ export const GestionDocumentalConfigPage: React.FC = () => {
             seccion={seccion}
             configCampos={configCampos}
             onConfigChange={updateCampo}
-            readOnly={isSaving}
+            readOnly={isSaving || isPublicado}
           />
         ))}
       </section>
@@ -135,6 +147,26 @@ export const GestionDocumentalConfigPage: React.FC = () => {
               className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-40"
             >
               Descartar
+            </button>
+          )}
+          {!isDirty && !isPublicado && (
+            <button
+              type="button"
+              disabled={publicarMutation.isPending}
+              onClick={() => publicarMutation.mutate()}
+              className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white text-sm font-semibold shadow-sm transition-colors"
+            >
+              {publicarMutation.isPending ? 'Activando...' : 'Activar'}
+            </button>
+          )}
+          {isPublicado && (
+            <button
+              type="button"
+              disabled={inhabilitarMutation.isPending}
+              onClick={() => inhabilitarMutation.mutate()}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-sm font-semibold shadow-sm transition-colors"
+            >
+              {inhabilitarMutation.isPending ? 'Inhabilitando...' : 'Inhabilitar'}
             </button>
           )}
         </div>

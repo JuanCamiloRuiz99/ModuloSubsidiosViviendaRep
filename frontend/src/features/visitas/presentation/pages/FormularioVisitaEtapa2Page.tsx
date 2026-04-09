@@ -220,18 +220,12 @@ export default function FormularioVisitaEtapa2Page() {
     e => e.modulo_principal === 'VISITA_TECNICA' && e.visita_tecnica_publicado === true,
   );
 
-  // 3. Buscar visita etapa 2 existente para esta postulación
+  // 3. La visita asignada (visitaId de la URL) ES la visita E2 — usarla directamente
   const postulacionId = visitaDDD?.postulacionId;
-  const { data: visitasE2, isLoading: loadingE2 } = useQuery({
-    queryKey: ['visitas-etapa2', { postulacion: postulacionId }],
-    queryFn: () =>
-      visitaEtapa2Repository.listar({ postulacion: Number(postulacionId) }),
-    enabled: !!postulacionId && !!etapaVT,
-  });
+  // visitaId del param ES el ID de la Visita asignada por el funcionario
+  const visitaE2Id: number | null = visitaId ? Number(visitaId) : null;
 
-  const visitaE2Id = visitasE2?.[0]?.id ?? null;
-
-  const { data: visitaE2Detail } = useQuery({
+  const { data: visitaE2Detail, isLoading: loadingE2 } = useQuery({
     queryKey: ['visita-etapa2', visitaE2Id],
     queryFn: () => visitaEtapa2Repository.obtener(visitaE2Id!),
     enabled: visitaE2Id !== null,
@@ -243,6 +237,9 @@ export default function FormularioVisitaEtapa2Page() {
   const [datosHogar, setDatosHogar] = useState<Partial<DatosHogarEtapa2>>(initialDatosHogar);
   const [initialized, setInitialized] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  // Foto del predio (archivo PNG)
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
 
   // Documentos
   const [docTipo, setDocTipo] = useState('');
@@ -264,6 +261,8 @@ export default function FormularioVisitaEtapa2Page() {
       setDocArchivo(null);
       setDocObs('');
       void refetchDocs();
+      void queryClient.invalidateQueries({ queryKey: ['visitas', 'mis-visitas'] });
+      void queryClient.invalidateQueries({ queryKey: ['visita', visitaId] });
       setToast({ msg: 'Documento subido exitosamente', type: 'success' });
     },
     onError: () => setToast({ msg: 'Error al subir el documento', type: 'error' }),
@@ -273,6 +272,8 @@ export default function FormularioVisitaEtapa2Page() {
     mutationFn: (docId: number) => visitaEtapa2Repository.eliminarDocumento(visitaE2Id!, docId),
     onSuccess: () => {
       void refetchDocs();
+      void queryClient.invalidateQueries({ queryKey: ['visitas', 'mis-visitas'] });
+      void queryClient.invalidateQueries({ queryKey: ['visita', visitaId] });
       setToast({ msg: 'Documento eliminado', type: 'success' });
     },
     onError: () => setToast({ msg: 'Error al eliminar el documento', type: 'error' }),
@@ -297,10 +298,11 @@ export default function FormularioVisitaEtapa2Page() {
         setDatosHogar(prev => ({ ...prev, ...visitaE2Detail.datos_hogar }));
       }
       setInitialized(true);
-    } else if (visitasE2 && visitasE2.length === 0) {
+    } else if (!loadingE2) {
+      // Query resolvió sin datos (nunca debería ocurrir para una visita asignada)
       setInitialized(true);
     }
-  }, [visitaE2Detail, visitasE2, initialized]);
+  }, [visitaE2Detail, loadingE2, initialized]);
 
   const setVF = <K extends keyof VisitaForm>(k: K, v: VisitaForm[K]) =>
     setVisitaForm(prev => ({ ...prev, [k]: v }));
@@ -333,10 +335,19 @@ export default function FormularioVisitaEtapa2Page() {
         await visitaEtapa2Repository.guardarDatosHogar(created.id, datosHogar);
       }
 
+      // Subir foto del predio si se seleccionó
+      if (fotoFile) {
+        await visitaEtapa2Repository.subirDocumento(created.id, 'FOTO_VISITA', fotoFile);
+      }
+
       return created;
     },
     onSuccess: () => {
+      setFotoFile(null);
       void queryClient.invalidateQueries({ queryKey: ['visitas-etapa2'] });
+      void queryClient.invalidateQueries({ queryKey: ['visita', visitaId] });
+      void queryClient.invalidateQueries({ queryKey: ['visitas', 'mis-visitas'] });
+      void refetchDocs();
       setToast({ msg: 'Visita técnica registrada exitosamente', type: 'success' });
     },
     onError: () => {
@@ -362,11 +373,20 @@ export default function FormularioVisitaEtapa2Page() {
         await visitaEtapa2Repository.guardarDatosHogar(updated.id, datosHogar);
       }
 
+      // Subir foto del predio si se seleccionó
+      if (fotoFile) {
+        await visitaEtapa2Repository.subirDocumento(visitaE2Id!, 'FOTO_VISITA', fotoFile);
+      }
+
       return updated;
     },
     onSuccess: () => {
+      setFotoFile(null);
       void queryClient.invalidateQueries({ queryKey: ['visitas-etapa2'] });
       void queryClient.invalidateQueries({ queryKey: ['visita-etapa2', visitaE2Id] });
+      void queryClient.invalidateQueries({ queryKey: ['visita', visitaId] });
+      void queryClient.invalidateQueries({ queryKey: ['visitas', 'mis-visitas'] });
+      void refetchDocs();
       setToast({ msg: 'Visita técnica actualizada exitosamente', type: 'success' });
     },
     onError: () => {
@@ -592,37 +612,43 @@ export default function FormularioVisitaEtapa2Page() {
           </p>
 
           {/* Foto del predio */}
-          <SectionTitle icon="📷" title="Fotos de la Visita" />
+          <SectionTitle icon="📷" title="Foto de la Visita" />
           <div className="mb-6 space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">URL o referencia de foto del predio</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Foto del predio (PNG)</label>
               <input
-                type="text"
-                value={(datosHogar.foto_predio_url as string) || ''}
-                onChange={e => setDH('foto_predio_url', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 text-sm"
-                placeholder="URL o referencia de la foto del predio"
+                type="file"
+                accept="image/png"
+                onChange={e => setFotoFile(e.target.files?.[0] ?? null)}
+                className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
               />
+              {fotoFile && (
+                <p className="text-xs text-indigo-600 mt-1">📸 Seleccionado: {fotoFile.name} — se subirá al guardar</p>
+              )}
             </div>
-            {isExistente && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800 mb-2 font-medium">
-                  📸 También puede subir fotos como documentos adjuntos usando el tipo
-                  <span className="font-semibold"> "Foto de la visita"</span> en la sección de Documentos de abajo.
-                </p>
-                {/* Mostrar fotos ya subidas */}
-                {documentos.filter(d => d.activo_logico && d.tipo_documento === 'FOTO_VISITA').length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs text-blue-600 font-medium mb-1">Fotos subidas:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {documentos.filter(d => d.activo_logico && d.tipo_documento === 'FOTO_VISITA').map(d => (
-                        <span key={d.id} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                          📷 {d.nombre_archivo || `Foto #${d.id}`}
-                        </span>
-                      ))}
+            {/* Fotos ya subidas */}
+            {documentos.filter(d => d.activo_logico && d.tipo_documento === 'FOTO_VISITA').length > 0 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p className="text-xs text-gray-600 font-medium mb-2">Fotos guardadas:</p>
+                <div className="flex flex-wrap gap-2">
+                  {documentos.filter(d => d.activo_logico && d.tipo_documento === 'FOTO_VISITA').map(d => (
+                    <div key={d.id} className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-800 rounded text-xs border border-indigo-200">
+                        📷 {d.nombre_archivo || `Foto #${d.id}`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => eliminarDocMutation.mutate(d.id)}
+                        className="text-red-400 hover:text-red-600 transition-colors"
+                        title="Eliminar foto"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
             )}
           </div>

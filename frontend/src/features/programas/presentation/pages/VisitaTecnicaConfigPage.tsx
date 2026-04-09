@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { etapaRepository } from '../../infrastructure/persistence/axios-etapa-repository';
 import { etapasQueryKey } from '../hooks/useEtapas';
 import { useVisitasEtapa2 } from '../hooks/useVisitaEtapa2';
@@ -45,6 +45,18 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
     resetConfig,
   } = useConfigCamposVisitaTecnica(etapaId);
 
+  const queryClient = useQueryClient();
+
+  const publicarMutation = useMutation({
+    mutationFn: () => etapaRepository.publicarVisitaTecnica(Number(etapaId)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) }),
+  });
+
+  const inhabilitarMutation = useMutation({
+    mutationFn: () => etapaRepository.inhabilitarVisitaTecnica(Number(etapaId)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) }),
+  });
+
   // Lista de visitas de esta etapa
   const { data: visitas = [] } = useVisitasEtapa2(
     etapaId ? { etapa: Number(etapaId) } : undefined,
@@ -62,7 +74,7 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-6 py-4">
+    <div className="max-w-5xl mx-auto flex flex-col gap-6 py-4">
 
       {/* Cabecera */}
       <div className="flex items-start justify-between gap-4">
@@ -118,14 +130,27 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
             seccion={seccion}
             configCampos={configCampos}
             onConfigChange={updateCampo}
-            readOnly={isSaving}
+            readOnly={isSaving || isPublicado}
           />
         ))}
       </section>
 
       {/* Resumen de visitas */}
       <section>
-        <h2 className="text-sm font-bold text-gray-800 mb-3">Visitas registradas</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-gray-800">Visitas registradas</h2>
+          {visitas.length > 0 && (
+            <button
+              onClick={() => navigate(`/programas/${programaId}/etapas/${etapaId}/visitas-registradas`)}
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
+            >
+              Ver todas
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </div>
         {visitas.length === 0 ? (
           <div className="bg-white border border-dashed border-gray-300 rounded-xl p-8 text-center">
             <div className="text-3xl mb-2">📋</div>
@@ -198,6 +223,26 @@ export const VisitaTecnicaConfigPage: React.FC = () => {
               className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-40"
             >
               Descartar
+            </button>
+          )}
+          {!isDirty && !isPublicado && (
+            <button
+              type="button"
+              disabled={publicarMutation.isPending}
+              onClick={() => publicarMutation.mutate()}
+              className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white text-sm font-semibold shadow-sm transition-colors"
+            >
+              {publicarMutation.isPending ? 'Publicando...' : 'Publicar'}
+            </button>
+          )}
+          {isPublicado && (
+            <button
+              type="button"
+              disabled={inhabilitarMutation.isPending}
+              onClick={() => inhabilitarMutation.mutate()}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-sm font-semibold shadow-sm transition-colors"
+            >
+              {inhabilitarMutation.isPending ? 'Inhabilitando...' : 'Inhabilitar'}
             </button>
           )}
         </div>

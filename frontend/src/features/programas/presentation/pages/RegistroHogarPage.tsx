@@ -11,7 +11,7 @@
 
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useFormularioPublico } from '../hooks/useFormularioEtapa';
+import { useEtapaInfoPublica } from '../hooks/useFormularioEtapa';
 import { registroHogarRepository } from '../../infrastructure/persistence/axios-registro-hogar-repository';
 import {
   INFO_HOGAR_INICIAL,
@@ -61,6 +61,23 @@ function validarPaso1(info: InfoHogarForm): ErroresInfoHogar {
   return e;
 }
 
+function validarPaso3(miembros: MiembroHogarForm[]): string | null {
+  for (const m of miembros) {
+    const nombre = [m.primer_nombre, m.primer_apellido].filter(Boolean).join(' ') || 'un miembro';
+    const frenteOk = m.documentos.find(d => d.tipo_documento === 'FOTO_CEDULA_FRENTE')?.file != null;
+    const reversoOk = m.documentos.find(d => d.tipo_documento === 'FOTO_CEDULA_REVERSO')?.file != null;
+    if (!frenteOk)  return `Falta la foto de la cédula (frente) de ${nombre}.`;
+    if (!reversoOk) return `Falta la foto de la cédula (reverso) de ${nombre}.`;
+    if (m.pertenece_sisben && !m.documentos.find(d => d.tipo_documento === 'CERTIFICADO_SISBEN')?.file)
+      return `Falta el certificado SISBEN de ${nombre}.`;
+    if (m.tiene_discapacidad && !m.documentos.find(d => d.tipo_documento === 'CERTIFICADO_DISCAPACIDAD')?.file)
+      return `Falta el certificado de discapacidad de ${nombre}.`;
+    if ((m.es_victima_conflicto || m.es_desplazado) && !m.documentos.find(d => d.tipo_documento === 'CERTIFICADO_VICTIMA')?.file)
+      return `Falta el certificado de víctima (RUV) de ${nombre}.`;
+  }
+  return null;
+}
+
 function validarPaso2(miembros: MiembroHogarForm[]): Record<string, ErroresMiembro> {
   const errs: Record<string, ErroresMiembro> = {};
   miembros.forEach(m => {
@@ -69,13 +86,66 @@ function validarPaso2(miembros: MiembroHogarForm[]): Record<string, ErroresMiemb
     if (!m.numero_documento.trim())   e.numero_documento  = 'Requerido';
     if (!m.primer_nombre.trim())      e.primer_nombre     = 'Requerido';
     if (!m.primer_apellido.trim())    e.primer_apellido   = 'Requerido';
+    if (!m.fecha_nacimiento)          e.fecha_nacimiento  = 'Requerido';
     if (!m.parentesco)                e.parentesco        = 'Requerido';
     if (m.parentesco === 'OTRO' && !m.parentesco_otro.trim())
                                       e.parentesco_otro   = 'Especifique el parentesco';
+    if (m.correo_electronico && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.correo_electronico))
+                                      e.correo_electronico = 'Correo electrónico inválido';
     if (Object.keys(e).length > 0) errs[m._localId] = e;
   });
+
+  // Cédulas duplicadas dentro de la misma postulación
+  const cuenta: Record<string, string[]> = {};
+  miembros.forEach(m => {
+    const num = m.numero_documento.trim();
+    if (!num) return;
+    if (!cuenta[num]) cuenta[num] = [];
+    cuenta[num].push(m._localId);
+  });
+  Object.entries(cuenta).forEach(([num, ids]) => {
+    if (ids.length > 1) {
+      ids.forEach(id => {
+        if (!errs[id]) errs[id] = {};
+        errs[id].numero_documento = `Número de cédula ${num} duplicado en esta postulación`;
+      });
+    }
+  });
+
   return errs;
 }
+
+// ── Pantalla de formulario cerrado ────────────────────────────────────────── //
+
+const PantallaCerrada: React.FC<{ programaNombre?: string }> = ({ programaNombre }) => (
+  <div className="min-h-screen bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
+    <div className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden text-center">
+      <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-8">
+        <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-1">Formulario no disponible</h1>
+        {programaNombre && (
+          <p className="text-amber-100 text-sm">{programaNombre}</p>
+        )}
+      </div>
+      <div className="p-8">
+        <p className="text-gray-600 text-sm">
+          El período de registro para esta etapa se encuentra <span className="font-semibold text-amber-700">inhabilitado</span>.
+          Comuníquese con la alcaldía para más información.
+        </p>
+        <a
+          href="/"
+          className="mt-6 inline-block px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+        >
+          Volver al inicio
+        </a>
+      </div>
+    </div>
+  </div>
+);
 
 // ── Componente de confirmación ────────────────────────────────────────────── //
 
@@ -106,6 +176,17 @@ const PantallaExito: React.FC<{ result: RegistroHogarResult }> = ({ result }) =>
             Lo necesitará para hacer seguimiento a su solicitud ante la alcaldía.
           </p>
         </div>
+        {result.advertencias && result.advertencias.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-2">
+            <p className="text-sm text-red-800 font-medium">⚠ Algunos documentos no se pudieron cargar:</p>
+            <ul className="text-xs text-red-600 mt-1 list-disc list-inside">
+              {result.advertencias.map((adv, i) => <li key={i}>{adv}</li>)}
+            </ul>
+            <p className="text-xs text-red-500 mt-2">
+              Puede volver a cargarlos desde el módulo de postulaciones.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   </div>
@@ -198,8 +279,8 @@ const ResumenCard: React.FC<{
 export const RegistroHogarPage: React.FC = () => {
   const { etapaId } = useParams<{ etapaId: string }>();
 
-  // Información de la etapa (nombre del programa, etc.)
-  const { data: etapaInfo } = useFormularioPublico(etapaId);
+  // Información de la etapa (nombre del programa, estado publicado, etc.)
+  const { data: etapaInfo, isLoading: loadingEtapa, isSuccess: etapaLoaded } = useEtapaInfoPublica(etapaId);
 
   // ── Estado del wizard ──────────────────────────────────────────────────── //
   const [paso, setPaso] = useState<WizardStep>(1);
@@ -212,6 +293,8 @@ export const RegistroHogarPage: React.FC = () => {
   // Errores por sección
   const [errores1, setErrores1]                     = useState<ErroresInfoHogar>({});
   const [erroresPorMiembro, setErroresPorMiembro]   = useState<Record<string, ErroresMiembro>>({});
+  const [erroresPaso3, setErroresPaso3]             = useState<string | null>(null);
+  const [errorCabezaHogar, setErrorCabezaHogar]     = useState<string | null>(null);
 
   // Estado de envío
   const [isSubmitting, setIsSubmitting]   = useState(false);
@@ -231,6 +314,18 @@ export const RegistroHogarPage: React.FC = () => {
       const e = validarPaso2(miembros);
       setErroresPorMiembro(e);
       if (Object.keys(e).length > 0) return;
+
+      if (!miembros.some(m => m.es_cabeza_hogar)) {
+        setErrorCabezaHogar('El hogar debe tener al menos un miembro marcado como cabeza de hogar.');
+        return;
+      }
+      setErrorCabezaHogar(null);
+    }
+
+    if (paso === 3) {
+      const err = validarPaso3(miembros);
+      setErroresPaso3(err);
+      if (err) return;
     }
 
     setPaso(prev => Math.min(prev + 1, 4) as WizardStep);
@@ -248,6 +343,7 @@ export const RegistroHogarPage: React.FC = () => {
     setMiembros(prev =>
       prev.map(m => m._localId === miembroLocalId ? { ...m, documentos: docs } : m),
     );
+    setErroresPaso3(null);
   };
 
   // ── Envío final ────────────────────────────────────────────────────────── //
@@ -265,7 +361,40 @@ export const RegistroHogarPage: React.FC = () => {
       );
       setResult(res);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error desconocido. Intente nuevamente.';
+      // Aplanar recursivamente los errores de Django DRF (pueden ser objetos/arrays anidados)
+      const flattenErrors = (val: unknown, prefix = ''): string[] => {
+        if (typeof val === 'string') return [prefix ? `${prefix}: ${val}` : val];
+        if (Array.isArray(val)) {
+          return val.flatMap((item, i) => {
+            if (typeof item === 'string') return [prefix ? `${prefix}: ${item}` : item];
+            if (typeof item === 'object' && item !== null) {
+              const label = prefix ? `${prefix}[${i + 1}]` : `miembro ${i + 1}`;
+              return flattenErrors(item, label);
+            }
+            return [];
+          });
+        }
+        if (typeof val === 'object' && val !== null) {
+          return Object.entries(val as Record<string, unknown>).flatMap(([k, v]) =>
+            flattenErrors(v, prefix ? `${prefix}.${k}` : k),
+          );
+        }
+        return [];
+      };
+
+      const axiosResp = (err as { response?: { data?: unknown } })?.response?.data;
+      let msg = 'Error desconocido. Intente nuevamente.';
+      if (axiosResp && typeof axiosResp === 'object') {
+        const d = axiosResp as Record<string, unknown>;
+        if (typeof d.detail === 'string') {
+          msg = d.detail;
+        } else {
+          const lines = flattenErrors(d);
+          if (lines.length > 0) msg = lines.join('\n');
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
       setSubmitError(msg);
     } finally {
       setIsSubmitting(false);
@@ -275,6 +404,20 @@ export const RegistroHogarPage: React.FC = () => {
   // ── Pantalla de éxito ──────────────────────────────────────────────────── //
 
   if (result) return <PantallaExito result={result} />;
+
+  // ── Guard: formulario inhabilitado ────────────────────────────────────── //
+
+  if (loadingEtapa) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (etapaLoaded && !etapaInfo?.registro_hogar_publicado) {
+    return <PantallaCerrada programaNombre={etapaInfo?.programa_nombre} />;
+  }
 
   // ── Render del wizard ──────────────────────────────────────────────────── //
 
@@ -331,19 +474,39 @@ export const RegistroHogarPage: React.FC = () => {
               />
             )}
             {paso === 2 && (
-              <SeccionMiembros
-                miembros={miembros}
-                onChange={setMiembros}
-                erroresPorMiembro={erroresPorMiembro}
-              />
+              <>
+                <SeccionMiembros
+                  miembros={miembros}
+                  onChange={setMiembros}
+                  erroresPorMiembro={erroresPorMiembro}
+                />
+                {errorCabezaHogar && (
+                  <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-red-700">{errorCabezaHogar}</p>
+                  </div>
+                )}
+              </>
             )}
             {paso === 3 && (
-              <SeccionDocumentos
-                documentosHogar={documentosHogar}
-                onChangeDocHogar={setDocumentosHogar}
-                miembros={miembros}
-                onChangeDocMiembro={handleDocMiembro}
-              />
+              <>
+                <SeccionDocumentos
+                  documentosHogar={documentosHogar}
+                  onChangeDocHogar={setDocumentosHogar}
+                  miembros={miembros}
+                  onChangeDocMiembro={handleDocMiembro}
+                />
+                {erroresPaso3 && (
+                  <div className="mx-0 mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-red-700">{erroresPaso3}</p>
+                  </div>
+                )}
+              </>
             )}
             {paso === 4 && (
               <ResumenCard
@@ -360,7 +523,7 @@ export const RegistroHogarPage: React.FC = () => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-sm text-red-700">{submitError}</p>
+              <p className="text-sm text-red-700 whitespace-pre-line">{submitError}</p>
             </div>
           )}
 

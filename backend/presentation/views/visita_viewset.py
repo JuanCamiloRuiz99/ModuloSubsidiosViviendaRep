@@ -134,10 +134,11 @@ class VisitaViewSet(viewsets.ViewSet):
             id_encuestador_creacion=encuestador,
         )
 
-        # Actualizar estado de la postulación a VISITA_PENDIENTE
-        postulacion.estado = 'VISITA_PENDIENTE'
-        postulacion.fecha_modificacion = now()
-        postulacion.save(update_fields=['estado', 'fecha_modificacion'])
+        # Actualizar estado de la postulación a VISITA_PROGRAMADA
+        if postulacion.estado in ('VISITA_PENDIENTE', 'EN_REVISION'):
+            postulacion.estado = 'VISITA_PROGRAMADA'
+            postulacion.fecha_modificacion = now()
+            postulacion.save(update_fields=['estado', 'fecha_modificacion'])
 
         # Re-fetch to get auto-populated fields (fecha_registro)
         visita.refresh_from_db()

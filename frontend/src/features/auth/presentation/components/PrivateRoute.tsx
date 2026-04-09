@@ -7,6 +7,8 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../../app/store';
 import { storageService } from '../../../../core/services';
 
 interface Props {
@@ -15,10 +17,11 @@ interface Props {
 }
 
 export const PrivateRoute: React.FC<Props> = ({ children, allowedRoles }) => {
+  const isAuthenticated = useSelector((s: RootState) => s.auth.isAuthenticated);
   const token = storageService.getToken();
   const user = storageService.getUser();
 
-  if (!token || !user) {
+  if (!token || !user || !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

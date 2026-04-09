@@ -4,7 +4,6 @@ Use Cases del módulo Programas.
 Cada clase encapsula una operación de negocio concreta.
 """
 
-import math
 from typing import Dict, Any
 
 from domain.programas import (
@@ -192,5 +191,6 @@ class ObtenerEstadisticasProgramasUseCase:
                 "BORRADOR": stats.get("BORRADOR", 0),
                 "ACTIVO": stats.get("ACTIVO", 0),
                 "INHABILITADO": stats.get("INHABILITADO", 0),
+                "CULMINADO": stats.get("CULMINADO", 0),
             },
         )

@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useProgramas } from '../../../programas/presentation/hooks/useProgramas';
 import { useEtapas } from '../../../programas/presentation/hooks/useEtapas';
 import { usePostulantes, type PostulanteRow } from '../../../postulantes/presentation/hooks/use-postulantes';
+import { HeaderPanel } from '../../../../shared/presentation/components';
 
 // ── Helpers ───────────────────────────────────────────────────────────────── //
 
@@ -83,10 +84,10 @@ export const GestionDocumentalInternaPage: React.FC = () => {
     <div className="max-w-5xl mx-auto flex flex-col gap-5 py-4">
 
       {/* ═══ Cabecera ═══ */}
-      <div>
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Proceso interno</p>
-        <h1 className="text-xl font-extrabold text-gray-900 leading-tight">Gestión Documental Interna</h1>
-      </div>
+      <HeaderPanel
+        title="Gestión Documental Interna"
+        subtitle="Proceso interno — Carga y revisión de documentos por postulación"
+      />
 
       {/* ═══ Paso 1 — Selección del programa ═══ */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">

@@ -40,8 +40,8 @@ export const SECCIONES_VISITA: SeccionConfig[] = [
       {
         titulo: 'Datos de la visita',
         campos: [
-          { id: 'motivo_no_efectiva',       label: 'Motivo no efectiva',       requeridoPorDefecto: false },
-          { id: 'motivo_no_efectiva_otro',  label: 'Motivo otro (detalle)',    requeridoPorDefecto: false },
+          { id: 'motivo_no_efectiva',       label: 'Motivo no efectiva',       requeridoPorDefecto: true },
+          { id: 'motivo_no_efectiva_otro',  label: 'Motivo otro (detalle)',    requeridoPorDefecto: true },
         ],
       },
     ],
@@ -69,9 +69,9 @@ export const SECCIONES_VISITA: SeccionConfig[] = [
       {
         titulo: 'Persona encuestada',
         campos: [
-          { id: 'nombre_encuestado',            label: 'Nombre del encuestado',     requeridoPorDefecto: false },
-          { id: 'numero_documento_encuestado',   label: 'Número de documento',       requeridoPorDefecto: false },
-          { id: 'telefono_contacto',             label: 'Teléfono de contacto',      requeridoPorDefecto: false },
+          { id: 'nombre_encuestado',            label: 'Nombre del encuestado',     requeridoPorDefecto: true },
+          { id: 'numero_documento_encuestado',   label: 'Número de documento',       requeridoPorDefecto: true },
+          { id: 'telefono_contacto',             label: 'Teléfono de contacto',      requeridoPorDefecto: true },
         ],
       },
     ],
@@ -100,9 +100,9 @@ export const SECCIONES_VISITA: SeccionConfig[] = [
         titulo: 'Tenencia',
         campos: [
           { id: 'calidad_tenencia',              label: 'Calidad de tenencia',              requeridoPorDefecto: true },
-          { id: 'tiene_escrituras',               label: 'Tiene escrituras',                 requeridoPorDefecto: false },
-          { id: 'tiene_certificado_libertad',     label: 'Tiene certificado de libertad',    requeridoPorDefecto: false },
-          { id: 'tiene_contrato_arrendamiento',   label: 'Tiene contrato de arrendamiento', requeridoPorDefecto: false },
+          { id: 'tiene_escrituras',               label: 'Tiene escrituras',                 requeridoPorDefecto: true },
+          { id: 'tiene_certificado_libertad',     label: 'Tiene certificado de libertad',    requeridoPorDefecto: true },
+          { id: 'tiene_contrato_arrendamiento',   label: 'Tiene contrato de arrendamiento', requeridoPorDefecto: true },
         ],
       },
       {
@@ -115,10 +115,10 @@ export const SECCIONES_VISITA: SeccionConfig[] = [
       {
         titulo: 'Vulnerabilidad',
         campos: [
-          { id: 'hay_adultos_mayores',        label: 'Adultos mayores',              requeridoPorDefecto: false },
-          { id: 'hay_personas_discapacidad',  label: 'Personas con discapacidad',    requeridoPorDefecto: false },
-          { id: 'hay_madre_cabeza_hogar',     label: 'Madre cabeza de hogar',        requeridoPorDefecto: false },
-          { id: 'hay_victimas_conflicto',     label: 'Víctimas del conflicto',       requeridoPorDefecto: false },
+          { id: 'hay_adultos_mayores',        label: 'Adultos mayores',              requeridoPorDefecto: true },
+          { id: 'hay_personas_discapacidad',  label: 'Personas con discapacidad',    requeridoPorDefecto: true },
+          { id: 'hay_madre_cabeza_hogar',     label: 'Madre cabeza de hogar',        requeridoPorDefecto: true },
+          { id: 'hay_victimas_conflicto',     label: 'Víctimas del conflicto',       requeridoPorDefecto: true },
         ],
       },
       {
@@ -134,17 +134,17 @@ export const SECCIONES_VISITA: SeccionConfig[] = [
         campos: [
           { id: 'tiene_agua',           label: 'Tiene agua',           requeridoPorDefecto: true },
           { id: 'tiene_energia',        label: 'Tiene energía',        requeridoPorDefecto: true },
-          { id: 'tiene_gas',            label: 'Tiene gas',            requeridoPorDefecto: false },
-          { id: 'tiene_alcantarillado', label: 'Tiene alcantarillado', requeridoPorDefecto: false },
+          { id: 'tiene_gas',            label: 'Tiene gas',            requeridoPorDefecto: true },
+          { id: 'tiene_alcantarillado', label: 'Tiene alcantarillado', requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Entorno y riesgos',
         campos: [
-          { id: 'percepcion_seguridad',   label: 'Percepción de seguridad',  requeridoPorDefecto: false },
-          { id: 'riesgo_inundacion',       label: 'Riesgo de inundación',    requeridoPorDefecto: false },
-          { id: 'riesgo_deslizamiento',    label: 'Riesgo de deslizamiento', requeridoPorDefecto: false },
-          { id: 'riesgo_estructural',      label: 'Riesgo estructural',      requeridoPorDefecto: false },
+          { id: 'percepcion_seguridad',   label: 'Percepción de seguridad',  requeridoPorDefecto: true },
+          { id: 'riesgo_inundacion',       label: 'Riesgo de inundación',    requeridoPorDefecto: true },
+          { id: 'riesgo_deslizamiento',    label: 'Riesgo de deslizamiento', requeridoPorDefecto: true },
+          { id: 'riesgo_estructural',      label: 'Riesgo estructural',      requeridoPorDefecto: true },
         ],
       },
     ],
@@ -172,9 +172,9 @@ export const SECCIONES_VISITA: SeccionConfig[] = [
       {
         titulo: 'Documentos y notas',
         campos: [
-          { id: 'acta_firmada',             label: 'Acta firmada (archivo)',    requeridoPorDefecto: false },
-          { id: 'observaciones_generales',  label: 'Observaciones generales',  requeridoPorDefecto: false },
-          { id: 'foto_predio_url',          label: 'Foto del predio',          requeridoPorDefecto: false },
+          { id: 'acta_firmada',             label: 'Acta firmada (archivo)',    requeridoPorDefecto: true },
+          { id: 'observaciones_generales',  label: 'Observaciones generales',  requeridoPorDefecto: true },
+          { id: 'foto_predio_url',          label: 'Foto del predio',          requeridoPorDefecto: true },
         ],
       },
     ],

@@ -32,24 +32,30 @@ export type TipoDocPersona =
   | 'REGISTRO_CIVIL'
   | 'PERMISO_PROTECCION_TEMPORAL';
 
+export type Sexo =
+  | 'MASCULINO'
+  | 'FEMENINO'
+  | 'INTERSEXUAL'
+  | 'NO_BINARIO'
+  | 'PREFIERE_NO_DECIR';
+
+// Documentos a nivel del hogar (predio, servicios, propiedad)
 export type TipoDocumentoHogar =
-  | 'FOTO_CEDULA_FRENTE'
-  | 'FOTO_CEDULA_REVERSO'
   | 'RECIBO_PREDIAL'
   | 'CERTIFICADO_TRADICION_LIBERTAD'
   | 'ESCRITURA_PUBLICA_PREDIO'
   | 'RECIBO_SERVICIOS_PUBLICOS'
   | 'DECLARACION_JURAMENTADA'
   | 'CERTIFICADO_RESIDENCIA'
-  | 'CERTIFICADO_SISBEN'
-  | 'CERTIFICADO_DISCAPACIDAD'
-  | 'REGISTRO_VICTIMA'
   | 'OTRO';
 
+// Documentos a nivel de cada miembro (identidad, SISBEN, discapacidad, etc.)
 export type TipoDocumentoMiembro =
-  | 'CEDULA'
+  | 'FOTO_CEDULA_FRENTE'
+  | 'FOTO_CEDULA_REVERSO'
   | 'REGISTRO_CIVIL'
   | 'TARJETA_IDENTIDAD'
+  | 'CERTIFICADO_SISBEN'
   | 'CERTIFICADO_DISCAPACIDAD'
   | 'CERTIFICADO_VICTIMA'
   | 'OTRO';
@@ -99,6 +105,9 @@ export interface MiembroHogarForm {
   primer_apellido: string;
   segundo_apellido: string;
   fecha_nacimiento: string;
+  sexo: Sexo | '';
+  telefono: string;
+  correo_electronico: string;
   // Vínculo con el hogar
   parentesco: Parentesco | '';
   parentesco_otro: string;
@@ -147,6 +156,7 @@ export interface RegistroHogarResult {
   id_postulacion: number;
   numero_radicado: string;
   fecha_radicado: string;
+  advertencias?: string[];
 }
 
 // ── Valores iniciales ─────────────────────────────────────────────────────── //
@@ -182,6 +192,9 @@ export const MIEMBRO_VACIO = (): MiembroHogarForm => ({
   primer_apellido: '',
   segundo_apellido: '',
   fecha_nacimiento: '',
+  sexo: '',
+  telefono: '',
+  correo_electronico: '',
   parentesco: '',
   parentesco_otro: '',
   es_cabeza_hogar: false,
@@ -209,7 +222,10 @@ export const MIEMBRO_VACIO = (): MiembroHogarForm => ({
   codigo_reincorporacion: '',
   etcr: '',
   estado_proceso_reincorporacion: '',
-  documentos: [],
+  documentos: [
+    { tipo_documento: 'FOTO_CEDULA_FRENTE', file: null, observaciones: '' },
+    { tipo_documento: 'FOTO_CEDULA_REVERSO', file: null, observaciones: '' },
+  ],
 });
 
 // ── Catálogos de opciones ─────────────────────────────────────────────────── //
@@ -264,31 +280,157 @@ export const SITUACION_LABORAL_OPTIONS: Array<{ value: SituacionLaboral; label: 
   { value: 'OTRO',          label: 'Otro' },
 ];
 
+export const SEXO_OPTIONS: Array<{ value: Sexo; label: string }> = [
+  { value: 'MASCULINO',        label: 'Masculino' },
+  { value: 'FEMENINO',         label: 'Femenino' },
+  { value: 'INTERSEXUAL',      label: 'Intersexual' },
+  { value: 'NO_BINARIO',       label: 'No binario' },
+  { value: 'PREFIERE_NO_DECIR', label: 'Prefiere no decir' },
+];
+
+/** Documentos del hogar: predio, servicios, propiedad. */
 export const TIPOS_DOCUMENTO_HOGAR: Array<{
   value: TipoDocumentoHogar;
   label: string;
-  requerido?: boolean;
 }> = [
-  { value: 'FOTO_CEDULA_FRENTE',             label: 'Foto cédula — frente',               requerido: true  },
-  { value: 'FOTO_CEDULA_REVERSO',            label: 'Foto cédula — reverso',              requerido: true  },
-  { value: 'RECIBO_PREDIAL',                 label: 'Recibo predial'                                       },
-  { value: 'CERTIFICADO_TRADICION_LIBERTAD', label: 'Certificado de tradición y libertad'                  },
-  { value: 'ESCRITURA_PUBLICA_PREDIO',       label: 'Escritura pública del predio'                         },
-  { value: 'RECIBO_SERVICIOS_PUBLICOS',      label: 'Recibo de servicios públicos'                         },
-  { value: 'DECLARACION_JURAMENTADA',        label: 'Declaración juramentada'                              },
-  { value: 'CERTIFICADO_RESIDENCIA',         label: 'Certificado de residencia'                            },
-  { value: 'CERTIFICADO_SISBEN',             label: 'Certificado SISBEN'                                   },
-  { value: 'CERTIFICADO_DISCAPACIDAD',       label: 'Certificado de discapacidad'                          },
-  { value: 'REGISTRO_VICTIMA',               label: 'Registro de víctima (RUV)'                            },
+  { value: 'RECIBO_PREDIAL',                 label: 'Recibo predial'                        },
+  { value: 'CERTIFICADO_TRADICION_LIBERTAD', label: 'Certificado de tradición y libertad'   },
+  { value: 'ESCRITURA_PUBLICA_PREDIO',       label: 'Escritura pública del predio'           },
+  { value: 'RECIBO_SERVICIOS_PUBLICOS',      label: 'Recibo de servicios públicos (agua/luz)'},
+  { value: 'DECLARACION_JURAMENTADA',        label: 'Declaración juramentada'                },
+  { value: 'CERTIFICADO_RESIDENCIA',         label: 'Certificado de residencia'              },
 ];
 
+/** Documentos requeridos por cada miembro (foto de identificación). */
+export const DOCS_REQUERIDOS_MIEMBRO: Array<{
+  value: 'FOTO_CEDULA_FRENTE' | 'FOTO_CEDULA_REVERSO';
+  label: string;
+}> = [
+  { value: 'FOTO_CEDULA_FRENTE',  label: 'Foto cédula — frente'  },
+  { value: 'FOTO_CEDULA_REVERSO', label: 'Foto cédula — reverso' },
+];
+
+/** Documentos opcionales que el usuario puede agregar a cada miembro. */
 export const TIPOS_DOCUMENTO_MIEMBRO: Array<{
   value: TipoDocumentoMiembro;
   label: string;
 }> = [
-  { value: 'CEDULA',                   label: 'Cédula de ciudadanía' },
-  { value: 'REGISTRO_CIVIL',           label: 'Registro civil' },
+  { value: 'REGISTRO_CIVIL',           label: 'Registro civil (menores)' },
   { value: 'TARJETA_IDENTIDAD',        label: 'Tarjeta de identidad' },
+  { value: 'CERTIFICADO_SISBEN',       label: 'Certificado SISBEN' },
   { value: 'CERTIFICADO_DISCAPACIDAD', label: 'Certificado de discapacidad' },
-  { value: 'CERTIFICADO_VICTIMA',      label: 'Certificado de víctima' },
+  { value: 'CERTIFICADO_VICTIMA',      label: 'Certificado registro de víctima (RUV)' },
+  { value: 'OTRO',                     label: 'Otro documento' },
+];
+
+// ── Catálogos adicionales para campos guiados ─────────────────────────────── //
+
+export const NIVEL_EDUCATIVO_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'NINGUNO',               label: 'Ninguno' },
+  { value: 'PREESCOLAR',            label: 'Preescolar' },
+  { value: 'PRIMARIA_INCOMPLETA',   label: 'Primaria incompleta' },
+  { value: 'PRIMARIA_COMPLETA',     label: 'Primaria completa' },
+  { value: 'SECUNDARIA_INCOMPLETA', label: 'Secundaria incompleta' },
+  { value: 'SECUNDARIA_COMPLETA',   label: 'Secundaria completa (bachiller)' },
+  { value: 'TECNICO',               label: 'Técnico' },
+  { value: 'TECNOLOGO',             label: 'Tecnólogo' },
+  { value: 'UNIVERSITARIO',         label: 'Universitario' },
+  { value: 'POSGRADO',              label: 'Posgrado' },
+];
+
+export const FUENTE_INGRESOS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'EMPLEO_FORMAL',    label: 'Empleo formal' },
+  { value: 'EMPLEO_INFORMAL',  label: 'Empleo informal' },
+  { value: 'NEGOCIO_PROPIO',   label: 'Negocio propio' },
+  { value: 'PENSION',          label: 'Pensión' },
+  { value: 'SUBSIDIO_ESTATAL', label: 'Subsidio del Estado' },
+  { value: 'REMESAS',          label: 'Remesas' },
+  { value: 'ARRIENDO',         label: 'Arriendo de inmuebles' },
+  { value: 'SIN_INGRESOS',     label: 'Sin ingresos' },
+  { value: 'OTRO',             label: 'Otro' },
+];
+
+export const GRADO_DISCAPACIDAD_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'LEVE',     label: 'Leve' },
+  { value: 'MODERADA', label: 'Moderada' },
+  { value: 'SEVERA',   label: 'Severa' },
+  { value: 'PROFUNDA', label: 'Profunda' },
+];
+
+export const HECHO_VICTIMIZANTE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'DESPLAZAMIENTO_FORZADO',      label: 'Desplazamiento forzado' },
+  { value: 'HOMICIDIO',                   label: 'Homicidio' },
+  { value: 'AMENAZA',                     label: 'Amenaza' },
+  { value: 'DESPOJO_TIERRAS',             label: 'Despojo de tierras' },
+  { value: 'DESAPARICION_FORZADA',        label: 'Desaparición forzada' },
+  { value: 'SECUESTRO',                   label: 'Secuestro' },
+  { value: 'MINAS_ANTIPERSONAL',          label: 'Minas antipersonal' },
+  { value: 'TORTURA',                     label: 'Tortura' },
+  { value: 'RECLUTAMIENTO_FORZADO',       label: 'Reclutamiento forzado' },
+  { value: 'DELITOS_CONTRA_INTEGRIDAD',   label: 'Delitos contra la integridad sexual' },
+  { value: 'OTRO',                        label: 'Otro' },
+];
+
+export const TIEMPO_RESIDENCIA_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'MENOS_1_ANIO', label: 'Menos de 1 año' },
+  { value: '1_A_3_ANIOS',  label: '1 a 3 años' },
+  { value: '3_A_5_ANIOS',  label: '3 a 5 años' },
+  { value: '5_A_10_ANIOS', label: '5 a 10 años' },
+  { value: 'MAS_10_ANIOS', label: 'Más de 10 años' },
+];
+
+export const GRUPO_SISBEN_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'A1',  label: 'A1 — Pobreza extrema' },
+  { value: 'A2',  label: 'A2 — Pobreza extrema' },
+  { value: 'A3',  label: 'A3 — Pobreza extrema' },
+  { value: 'A4',  label: 'A4 — Pobreza extrema' },
+  { value: 'A5',  label: 'A5 — Pobreza extrema' },
+  { value: 'B1',  label: 'B1 — Pobreza moderada' },
+  { value: 'B2',  label: 'B2 — Pobreza moderada' },
+  { value: 'B3',  label: 'B3 — Pobreza moderada' },
+  { value: 'B4',  label: 'B4 — Pobreza moderada' },
+  { value: 'B5',  label: 'B5 — Pobreza moderada' },
+  { value: 'B6',  label: 'B6 — Pobreza moderada' },
+  { value: 'B7',  label: 'B7 — Pobreza moderada' },
+  { value: 'C1',  label: 'C1 — Vulnerable' },
+  { value: 'C2',  label: 'C2 — Vulnerable' },
+  { value: 'C3',  label: 'C3 — Vulnerable' },
+  { value: 'C4',  label: 'C4 — Vulnerable' },
+  { value: 'C5',  label: 'C5 — Vulnerable' },
+  { value: 'C6',  label: 'C6 — Vulnerable' },
+  { value: 'C7',  label: 'C7 — Vulnerable' },
+  { value: 'C8',  label: 'C8 — Vulnerable' },
+  { value: 'C9',  label: 'C9 — Vulnerable' },
+  { value: 'C10', label: 'C10 — Vulnerable' },
+  { value: 'C11', label: 'C11 — Vulnerable' },
+  { value: 'C12', label: 'C12 — Vulnerable' },
+  { value: 'C13', label: 'C13 — Vulnerable' },
+  { value: 'C14', label: 'C14 — Vulnerable' },
+  { value: 'C15', label: 'C15 — Vulnerable' },
+  { value: 'C16', label: 'C16 — Vulnerable' },
+  { value: 'C17', label: 'C17 — Vulnerable' },
+  { value: 'C18', label: 'C18 — Vulnerable' },
+  { value: 'D1',  label: 'D1 — No pobre, no vulnerable' },
+  { value: 'D2',  label: 'D2 — No pobre, no vulnerable' },
+  { value: 'D3',  label: 'D3 — No pobre, no vulnerable' },
+  { value: 'D4',  label: 'D4 — No pobre, no vulnerable' },
+  { value: 'D5',  label: 'D5 — No pobre, no vulnerable' },
+];
+
+export const ESTADO_REINCORPORACION_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'EN_PROCESO',   label: 'En proceso de reincorporación' },
+  { value: 'REINCORPORADO', label: 'Reincorporado' },
+  { value: 'DESVINCULADO',  label: 'Desvinculado del proceso' },
+];
+
+export const COMUNAS_POPAYAN: Array<{ value: string; label: string }> = [
+  { value: 'COMUNA_1', label: 'Comuna 1' },
+  { value: 'COMUNA_2', label: 'Comuna 2' },
+  { value: 'COMUNA_3', label: 'Comuna 3' },
+  { value: 'COMUNA_4', label: 'Comuna 4' },
+  { value: 'COMUNA_5', label: 'Comuna 5' },
+  { value: 'COMUNA_6', label: 'Comuna 6' },
+  { value: 'COMUNA_7', label: 'Comuna 7' },
+  { value: 'COMUNA_8', label: 'Comuna 8' },
+  { value: 'COMUNA_9', label: 'Comuna 9' },
 ];

@@ -17,6 +17,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import { HeaderPanel, StatCard } from '../../../../shared/presentation/components';
+import { useNavigate } from 'react-router-dom';
 import { usePostulantes } from '../../../postulantes/presentation/hooks/use-postulantes';
 import { useProgramas } from '../../../programas/presentation/hooks/useProgramas';
 import { useEtapas } from '../../../programas/presentation/hooks/useEtapas';
@@ -52,6 +53,7 @@ type TabId = 'mapa' | 'gestion';
 // ── Página ────────────────────────────────────────────────────────────────── //
 
 export const VisitasPage: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('mapa');
 
   // ── Filtro por programa ──
@@ -364,7 +366,7 @@ export const VisitasPage: React.FC = () => {
           className="w-full sm:w-96 text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100"
         >
           <option value="">— Seleccionar programa —</option>
-          {(programas ?? []).map((prog: any) => (
+          {(programas ?? []).filter((prog: any) => prog.estado !== 'CULMINADO').map((prog: any) => (
             <option key={prog.id} value={String(prog.id)}>
               {prog.nombre}
             </option>
@@ -599,28 +601,30 @@ export const VisitasPage: React.FC = () => {
 
               {/* Pie: crear visitas */}
               {clusters.length > 0 && (
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4">
-                  <div className="text-xs text-gray-500">
-                    {asignadas > 0
-                      ? `${asignadas} hogar${asignadas !== 1 ? 'es' : ''} en ${clusters.filter(c => c.tecnicoId).length} grupo${clusters.filter(c => c.tecnicoId).length !== 1 ? 's' : ''} listo${clusters.filter(c => c.tecnicoId).length !== 1 ? 's' : ''} para crear visitas`
-                      : 'Selecciona grupos y asígnalos a técnicos para crear visitas'}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {createResult && (
-                      <span className={`text-xs font-medium ${createResult.fail === 0 ? 'text-green-700' : 'text-amber-700'}`}>
-                        {createResult.ok} creada{createResult.ok !== 1 ? 's' : ''}
-                        {createResult.dup > 0 && `, ${createResult.dup} ya asignada${createResult.dup !== 1 ? 's' : ''}`}
-                        {createResult.fail > 0 && `, ${createResult.fail} fallida${createResult.fail !== 1 ? 's' : ''}`}
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleCrearVisitas}
-                      disabled={creatingVisitas || asignadas === 0}
-                      className="text-sm font-semibold rounded-lg px-5 py-2 bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {creatingVisitas ? 'Creando…' : `Crear visitas (${asignadas})`}
-                    </button>
+                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="text-xs text-gray-500">
+                      {asignadas > 0
+                        ? `${asignadas} hogar${asignadas !== 1 ? 'es' : ''} en ${clusters.filter(c => c.tecnicoId).length} grupo${clusters.filter(c => c.tecnicoId).length !== 1 ? 's' : ''} listo${clusters.filter(c => c.tecnicoId).length !== 1 ? 's' : ''} para crear visitas`
+                        : 'Selecciona grupos y asígnalos a técnicos para crear visitas'}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {createResult && (
+                        <span className={`text-xs font-medium ${createResult.fail === 0 ? 'text-green-700' : 'text-amber-700'}`}>
+                          {createResult.ok} creada{createResult.ok !== 1 ? 's' : ''}
+                          {createResult.dup > 0 && `, ${createResult.dup} ya asignada${createResult.dup !== 1 ? 's' : ''}`}
+                          {createResult.fail > 0 && `, ${createResult.fail} fallida${createResult.fail !== 1 ? 's' : ''}`}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleCrearVisitas}
+                        disabled={creatingVisitas || asignadas === 0}
+                        className="text-sm font-semibold rounded-lg px-5 py-2 bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {creatingVisitas ? 'Creando…' : `Crear visitas (${asignadas})`}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -628,6 +632,26 @@ export const VisitasPage: React.FC = () => {
           )}
         </>
       )}
+
+      {/* ── Botón Ver visitas registradas ── */}
+      {(() => {
+        const etapaVisita = etapasPrograma.find(e => e.modulo_principal === 'VISITA_TECNICA');
+        if (!etapaVisita) return null;
+        return (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => navigate(`/programas/${selectedProgramaId}/etapas/${etapaVisita.id}/visitas-registradas`)}
+              className="flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Ver visitas registradas
+            </button>
+          </div>
+        );
+      })()}
 
       </>
       )}

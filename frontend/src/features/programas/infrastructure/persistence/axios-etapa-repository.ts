@@ -59,6 +59,13 @@ export interface FormularioPublicoData extends FormularioData {
   programa_nombre: string;
 }
 
+export interface EtapaInfoPublica {
+  etapa_id: number;
+  numero_etapa: number;
+  programa_nombre: string;
+  registro_hogar_publicado: boolean;
+}
+
 export interface EnvioFormularioResult {
   id_persona: number;
   primer_nombre: string;
@@ -178,6 +185,13 @@ export const etapaRepository = {
   async obtenerFormularioPublico(etapaId: number): Promise<FormularioPublicoData> {
     const { data } = await apiService.get<FormularioPublicoData>(
       `etapas/${etapaId}/formulario-publico/`,
+    );
+    return data;
+  },
+
+  async obtenerInfoPublica(etapaId: number): Promise<EtapaInfoPublica> {
+    const { data } = await apiService.get<EtapaInfoPublica>(
+      `etapas/${etapaId}/info-publica/`,
     );
     return data;
   },

@@ -2,7 +2,10 @@
 Serializer para la entidad Etapa
 """
 from rest_framework import serializers
-from infrastructure.database.models import Etapa, FormularioEtapa
+from infrastructure.database.models import (
+    Etapa, FormularioEtapa,
+    ConfigRegistroHogar, ConfigVisitaTecnica, ConfigGestionDocumental,
+)
 
 
 class EtapaSerializer(serializers.ModelSerializer):
@@ -35,7 +38,10 @@ class EtapaSerializer(serializers.ModelSerializer):
         read_only_fields = ['fecha_creacion', 'fecha_modificacion', 'activo_logico', 'finalizada', 'fecha_finalizacion']
 
     def get_formulario_configurado(self, obj):
-        return FormularioEtapa.objects.filter(etapa=obj).exists()
+        try:
+            return obj.formulario is not None
+        except FormularioEtapa.DoesNotExist:
+            return False
 
     def get_formulario_estado(self, obj):
         try:
@@ -46,17 +52,17 @@ class EtapaSerializer(serializers.ModelSerializer):
     def get_registro_hogar_publicado(self, obj):
         try:
             return obj.config_registro_hogar.publicado
-        except Exception:
+        except ConfigRegistroHogar.DoesNotExist:
             return False
 
     def get_visita_tecnica_publicado(self, obj):
         try:
             return obj.config_visita_tecnica.publicado
-        except Exception:
+        except ConfigVisitaTecnica.DoesNotExist:
             return False
 
     def get_gestion_documental_publicado(self, obj):
         try:
             return obj.config_gestion_documental.publicado
-        except Exception:
+        except ConfigGestionDocumental.DoesNotExist:
             return False

@@ -5,7 +5,7 @@
  * tarjeta colapsable que contiene el MiembroForm completo.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { MiembroHogarForm } from '../../../domain/registro-hogar.types';
 import { PARENTESCO_OPTIONS, MIEMBRO_VACIO } from '../../../domain/registro-hogar.types';
 import { MiembroForm } from './MiembroForm';
@@ -23,6 +23,14 @@ export const SeccionMiembros: React.FC<Props> = ({
   erroresPorMiembro = {},
 }) => {
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+
+  // Cuando se detectan errores en miembros, auto-expandir sus tarjetas
+  useEffect(() => {
+    const ids = Object.keys(erroresPorMiembro);
+    if (ids.length > 0) {
+      setExpandidos(prev => new Set([...prev, ...ids]));
+    }
+  }, [erroresPorMiembro]);
 
   const toggleExpand = (id: string) =>
     setExpandidos(prev => {
@@ -88,6 +96,7 @@ export const SeccionMiembros: React.FC<Props> = ({
             .filter(Boolean)
             .join(' ') || 'Nuevo miembro';
           const parentescoLabel = miembro.parentesco ? labelParentesco(miembro.parentesco) : '';
+          const cabezaOcupada = miembros.some(m => m._localId !== miembro._localId && m.es_cabeza_hogar);
 
           return (
             <div
@@ -187,6 +196,7 @@ export const SeccionMiembros: React.FC<Props> = ({
                     miembro={miembro}
                     onChange={actualizado => actualizarMiembro(miembro._localId, actualizado)}
                     errores={errores}
+                    cabezaOcupada={cabezaOcupada}
                   />
                 </div>
               )}

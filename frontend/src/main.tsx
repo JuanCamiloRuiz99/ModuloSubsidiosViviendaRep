@@ -13,7 +13,6 @@ import "leaflet/dist/leaflet.css";
 // Referencia: https://github.com/facebook/react/issues/17256
 if (typeof Node !== "undefined") {
   const origRemoveChild = Node.prototype.removeChild;
-  // @ts-expect-error – override nativo
   Node.prototype.removeChild = function <T extends Node>(child: T): T {
     if (child.parentNode !== this) {
       return child;
@@ -22,7 +21,6 @@ if (typeof Node !== "undefined") {
   };
 
   const origInsertBefore = Node.prototype.insertBefore;
-  // @ts-expect-error – override nativo
   Node.prototype.insertBefore = function <T extends Node>(
     newNode: T,
     refNode: Node | null,
@@ -40,6 +38,7 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutos
       gcTime: 10 * 60 * 1000, // 10 minutos (anteriormente cacheTime)
+      retry: 2,
     },
   },
 });

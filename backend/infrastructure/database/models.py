@@ -29,7 +29,7 @@ class Programa(models.Model):
         ordering = ['-fecha_creacion']
         verbose_name = 'Programa'
         verbose_name_plural = 'Programas'
-        db_table = 'programas_programa'
+        db_table = 'gestion_programa'
 
     def __str__(self):
         return f"{self.nombre} ({self.codigo_programa})"
@@ -82,57 +82,11 @@ class Etapa(models.Model):
         ordering = ['programa', 'numero_etapa']
         verbose_name = 'Etapa'
         verbose_name_plural = 'Etapas'
-        db_table = 'etapas_proceso'
+        db_table = 'etapas_programas'
         unique_together = [('programa', 'numero_etapa')]
 
     def __str__(self):
         return f"{self.programa.nombre} - Etapa {self.numero_etapa}"
-
-
-class TipoDocumento(models.Model):
-    """Tipos de documentos permitidos para postulantes"""
-    nombre = models.CharField(max_length=50, unique=True)
-    descripcion = models.TextField(blank=True)
-
-    class Meta:
-        verbose_name = 'Tipo de Documento'
-        verbose_name_plural = 'Tipos de Documento'
-        db_table = 'programas_tipo_documento'
-
-    def __str__(self):
-        return self.nombre
-
-
-class Postulante(models.Model):
-    """Modelo ORM para los postulantes a un programa"""
-
-    ESTADOS = [
-        ('ACTIVO', 'Activo'),
-        ('INACTIVO', 'Inactivo'),
-        ('RECHAZADO', 'Rechazado'),
-        ('APROBADO', 'Aprobado'),
-        ('SUSPENDIDO', 'Suspendido'),
-    ]
-
-    programa = models.ForeignKey(Programa, on_delete=models.CASCADE, related_name='postulantes')
-    nombre = models.CharField(max_length=255, blank=False)
-    apellido = models.CharField(max_length=255, blank=False)
-    tipo_documento = models.ForeignKey(TipoDocumento, on_delete=models.SET_NULL, null=True)
-    numero_documento = models.CharField(max_length=20, unique=True, blank=False)
-    email = models.EmailField(blank=True)
-    telefono = models.CharField(max_length=20, blank=True)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='ACTIVO')
-    fecha_postulacion = models.DateTimeField(auto_now_add=True)
-    fecha_actualizacion = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-fecha_postulacion']
-        verbose_name = 'Postulante'
-        verbose_name_plural = 'Postulantes'
-        db_table = 'programas_postulante'
-
-    def __str__(self):
-        return f"{self.nombre} {self.apellido} ({self.numero_documento})"
 
 
 class FormularioEtapa(models.Model):
@@ -209,41 +163,6 @@ class CampoFormulario(models.Model):
 
     def __str__(self):
         return f"{self.formulario} · {self.campo_catalogo} (#{self.orden})"
-
-
-class RespuestaFormulario(models.Model):
-    """
-    Respuesta enviada por un postulante para un campo de un formulario publicado.
-    El valor siempre se almacena como texto; el tipo del campo (date, select, etc.)
-    determina cómo debe interpretarse al leerlo.
-    """
-
-    formulario = models.ForeignKey(
-        FormularioEtapa,
-        on_delete=models.PROTECT,
-        related_name='respuestas',
-    )
-    postulante = models.ForeignKey(
-        Postulante,
-        on_delete=models.CASCADE,
-        related_name='respuestas_formulario',
-    )
-    campo_catalogo = models.CharField(
-        max_length=60,
-        help_text="Debe coincidir con CampoFormulario.campo_catalogo",
-    )
-    valor = models.TextField()
-    fecha_respuesta = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'respuestas_formulario'
-        unique_together = [('formulario', 'postulante', 'campo_catalogo')]
-        ordering = ['formulario', 'postulante', 'campo_catalogo']
-        verbose_name = 'Respuesta de Formulario'
-        verbose_name_plural = 'Respuestas de Formulario'
-
-    def __str__(self):
-        return f"Respuesta {self.postulante} · {self.campo_catalogo}"
 
 
 class Ciudadano(models.Model):
@@ -379,7 +298,7 @@ class GestionHogarEtapa1(models.Model):
     campos_incorrectos   = models.JSONField(default=list, blank=True)
     observaciones_revision = models.TextField(blank=True, default='')
 
-    numero_radicado = models.CharField(max_length=20, unique=True)
+    numero_radicado = models.CharField(max_length=40, unique=True)
     fecha_radicado  = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -433,6 +352,14 @@ class MiembroHogar(models.Model):
     )
 
     # Datos personales
+    SEXO_CHOICES = [
+        ('MASCULINO',   'Masculino'),
+        ('FEMENINO',    'Femenino'),
+        ('INTERSEXUAL', 'Intersexual'),
+        ('NO_BINARIO',  'No binario'),
+        ('PREFIERE_NO_DECIR', 'Prefiere no decir'),
+    ]
+
     tipo_documento   = models.CharField(max_length=30, choices=TIPO_DOCUMENTO_CHOICES)
     numero_documento = models.CharField(max_length=30)
     primer_nombre    = models.CharField(max_length=100)
@@ -440,6 +367,9 @@ class MiembroHogar(models.Model):
     primer_apellido  = models.CharField(max_length=100)
     segundo_apellido = models.CharField(max_length=100, blank=True)
     fecha_nacimiento = models.DateField()
+    sexo             = models.CharField(max_length=20, choices=SEXO_CHOICES, blank=True)
+    telefono         = models.CharField(max_length=20, blank=True)
+    correo_electronico = models.EmailField(max_length=150, blank=True)
 
     # Vínculo con el hogar
     parentesco      = models.CharField(max_length=30, choices=PARENTESCO_CHOICES)
@@ -495,17 +425,12 @@ class DocumentoGestionHogar(models.Model):
     """Documento adjunto al registro del hogar (nivel postulación)."""
 
     TIPO_CHOICES = [
-        ('FOTO_CEDULA_FRENTE',             'Foto cédula frente'),
-        ('FOTO_CEDULA_REVERSO',            'Foto cédula reverso'),
         ('RECIBO_PREDIAL',                 'Recibo predial'),
         ('CERTIFICADO_TRADICION_LIBERTAD', 'Certificado de tradición y libertad'),
         ('ESCRITURA_PUBLICA_PREDIO',       'Escritura pública del predio'),
         ('RECIBO_SERVICIOS_PUBLICOS',      'Recibo de servicios públicos'),
         ('DECLARACION_JURAMENTADA',        'Declaración juramentada'),
         ('CERTIFICADO_RESIDENCIA',         'Certificado de residencia'),
-        ('CERTIFICADO_SISBEN',             'Certificado SISBEN'),
-        ('CERTIFICADO_DISCAPACIDAD',       'Certificado de discapacidad'),
-        ('REGISTRO_VICTIMA',               'Registro de víctima (RUV)'),
         ('OTRO',                           'Otro'),
     ]
 
@@ -556,12 +481,14 @@ class DocumentoMiembroHogar(models.Model):
     """Documento adjunto a un miembro del hogar."""
 
     TIPO_CHOICES = [
-        ('CEDULA',                   'Cédula de ciudadanía'),
-        ('REGISTRO_CIVIL',           'Registro civil'),
-        ('TARJETA_IDENTIDAD',        'Tarjeta de identidad'),
-        ('CERTIFICADO_DISCAPACIDAD', 'Certificado de discapacidad'),
-        ('CERTIFICADO_VICTIMA',      'Certificado de víctima'),
-        ('OTRO',                     'Otro'),
+        ('FOTO_CEDULA_FRENTE',        'Foto cédula frente'),
+        ('FOTO_CEDULA_REVERSO',       'Foto cédula reverso'),
+        ('REGISTRO_CIVIL',            'Registro civil'),
+        ('TARJETA_IDENTIDAD',         'Tarjeta de identidad'),
+        ('CERTIFICADO_SISBEN',        'Certificado SISBEN'),
+        ('CERTIFICADO_DISCAPACIDAD',  'Certificado de discapacidad'),
+        ('CERTIFICADO_VICTIMA',       'Certificado de víctima'),
+        ('OTRO',                      'Otro'),
     ]
 
     miembro        = models.ForeignKey(
@@ -718,6 +645,7 @@ class Postulacion(models.Model):
         ('EN_REVISION',         'En revisión'),
         ('SUBSANACION',         'Subsanación'),
         ('VISITA_PENDIENTE',    'Visita pendiente'),
+        ('VISITA_PROGRAMADA',   'Visita programada'),
         ('VISITA_REALIZADA',       'Visita realizada'),
         ('DOCUMENTOS_INCOMPLETOS', 'Documentos incompletos'),
         ('DOCUMENTOS_CARGADOS',    'Documentos cargados'),
@@ -776,6 +704,9 @@ class Postulacion(models.Model):
         verbose_name_plural = 'Postulaciones'
         indexes = [
             models.Index(fields=['programa'], name='idx_postulaciones_programa'),
+            models.Index(fields=['programa', 'estado'], name='idx_postulaciones_prog_estado'),
+            models.Index(fields=['funcionario_asignado'], name='idx_postulaciones_func_asig'),
+            models.Index(fields=['estado'], name='idx_postulaciones_estado'),
         ]
 
     def __str__(self):
@@ -1119,54 +1050,6 @@ class DocumentoVisitaEtapa2(models.Model):
 
 
 # ─────────────────────────────────────────────────────────────────────────── #
-# Llamadas – Registro de llamadas a postulantes                               #
-# ─────────────────────────────────────────────────────────────────────────── #
-
-class LlamadaPostulacion(models.Model):
-    """Registro de una llamada telefónica a un postulante."""
-
-    RESULTADO_CHOICES = [
-        ('CONTESTADA',            'Contestada'),
-        ('NO_CONTESTA',           'No contesta'),
-        ('BUZON',                 'Buzón de voz'),
-        ('NUMERO_EQUIVOCADO',     'Número equivocado'),
-        ('NUMERO_FUERA_SERVICIO', 'Número fuera de servicio'),
-    ]
-
-    postulacion = models.ForeignKey(
-        Postulacion,
-        on_delete=models.CASCADE,
-        related_name='llamadas',
-    )
-    usuario_llamada = models.ForeignKey(
-        'database.UsuarioSistema',
-        on_delete=models.PROTECT,
-        related_name='llamadas_realizadas',
-        db_column='usuario_llamada',
-    )
-    fecha_llamada = models.DateField()
-    hora_llamada = models.TimeField()
-    resultado = models.CharField(max_length=30, choices=RESULTADO_CHOICES)
-    observaciones = models.TextField(blank=True, default='')
-
-    # Trazabilidad
-    fecha_registro = models.DateTimeField(auto_now_add=True)
-    activo_logico = models.BooleanField(default=True)
-
-    class Meta:
-        db_table = 'llamadas_postulacion'
-        ordering = ['-fecha_llamada', '-hora_llamada']
-        verbose_name = 'Llamada a Postulante'
-        verbose_name_plural = 'Llamadas a Postulantes'
-        indexes = [
-            models.Index(fields=['postulacion'], name='idx_llamada_postulacion'),
-        ]
-
-    def __str__(self):
-        return f'Llamada #{self.pk} – Postulación {self.postulacion_id} ({self.resultado})'
-
-
-# ─────────────────────────────────────────────────────────────────────────── #
 # Documentos Proceso Interno – Gestión Documental Etapa 3                     #
 # ─────────────────────────────────────────────────────────────────────────── #
 
@@ -1199,6 +1082,8 @@ class DocumentoProcesoInterno(models.Model):
         ('RIESGO_INUNDACION_REMOCION',       'Riesgo de inundación / remoción masa'),
         ('CERTIFICACION_AGUA',               'Certificación de agua'),
         ('CERTIFICACION_ENERGIA',            'Certificación de energía'),
+        ('ORFEO_SOLICITUD',                  'Orfeo solicitud'),
+        ('ORFEO_RESPUESTA',                  'Orfeo respuesta'),
     ]
 
     postulacion = models.ForeignKey(

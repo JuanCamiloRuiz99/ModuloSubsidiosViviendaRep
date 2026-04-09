@@ -4,16 +4,22 @@
  * Cubre los campos de miembros_hogar organizados en secciones:
  *   1. Datos de la persona     2. Vínculo con el hogar
  *   3. Socioeconómica          4. Afiliación SISBEN
- *   5. Condiciones especiales  6. Documentos del miembro
+ *   5. Condiciones especiales
  */
 
-import React, { useState } from 'react';
-import type { MiembroHogarForm, DocumentoMiembroEntry } from '../../../domain/registro-hogar.types';
+import React, { useState, useEffect } from 'react';
+import type { MiembroHogarForm } from '../../../domain/registro-hogar.types';
 import {
   PARENTESCO_OPTIONS,
   TIPOS_DOC_PERSONA,
   SITUACION_LABORAL_OPTIONS,
-  TIPOS_DOCUMENTO_MIEMBRO,
+  NIVEL_EDUCATIVO_OPTIONS,
+  FUENTE_INGRESOS_OPTIONS,
+  GRADO_DISCAPACIDAD_OPTIONS,
+  HECHO_VICTIMIZANTE_OPTIONS,
+  GRUPO_SISBEN_OPTIONS,
+  ESTADO_REINCORPORACION_OPTIONS,
+  SEXO_OPTIONS,
 } from '../../../domain/registro-hogar.types';
 
 export type ErroresMiembro = Partial<Record<keyof MiembroHogarForm, string>>;
@@ -22,6 +28,8 @@ interface Props {
   miembro: MiembroHogarForm;
   onChange: (m: MiembroHogarForm) => void;
   errores?: ErroresMiembro;
+  /** Otro miembro del hogar ya está marcado como cabeza de hogar. */
+  cabezaOcupada?: boolean;
 }
 
 // ── Helpers internos ──────────────────────────────────────────────────────── //
@@ -111,7 +119,7 @@ const CondicionToggle: React.FC<{
 
 // ── Componente principal ──────────────────────────────────────────────────── //
 
-export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }) => {
+export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {}, cabezaOcupada = false }) => {
   const set = <K extends keyof MiembroHogarForm>(key: K, val: MiembroHogarForm[K]) =>
     onChange({ ...miembro, [key]: val });
 
@@ -119,6 +127,21 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
   const [secAbiertas, setSecAbiertas] = useState<Set<string>>(
     new Set(['persona', 'vinculo']),
   );
+
+  // Si llegan errores, re-abrir las secciones afectadas
+  useEffect(() => {
+    const keys = Object.keys(errores);
+    if (keys.length === 0) return;
+    const PERSONA = new Set(['tipo_documento','numero_documento','primer_nombre','segundo_nombre','primer_apellido','segundo_apellido','fecha_nacimiento']);
+    const VINCULO = new Set(['parentesco','parentesco_otro','es_cabeza_hogar']);
+    setSecAbiertas(prev => {
+      const next = new Set(prev);
+      if (keys.some(k => PERSONA.has(k))) next.add('persona');
+      if (keys.some(k => VINCULO.has(k))) next.add('vinculo');
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errores]);
   const toggleSec = (id: string) =>
     setSecAbiertas(prev => {
       const next = new Set(prev);
@@ -156,25 +179,6 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
       )}
     </button>
   );
-
-  // ── Documentos del miembro ─────────────────────────────────────────────── //
-  const agregarDocMiembro = () =>
-    set('documentos', [
-      ...miembro.documentos,
-      { tipo_documento: '', file: null, observaciones: '' },
-    ]);
-
-  const actualizarDoc = (i: number, partial: Partial<DocumentoMiembroEntry>) =>
-    set(
-      'documentos',
-      miembro.documentos.map((d, idx) => (idx === i ? { ...d, ...partial } : d)),
-    );
-
-  const eliminarDoc = (i: number) =>
-    set(
-      'documentos',
-      miembro.documentos.filter((_, idx) => idx !== i),
-    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -252,6 +256,39 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
                 className={inputCls(errores.fecha_nacimiento)}
               />
             </Field>
+
+            <Field label="Sexo" error={errores.sexo}>
+              <select
+                value={miembro.sexo}
+                onChange={e => set('sexo', e.target.value as MiembroHogarForm['sexo'])}
+                className={inputCls()}
+              >
+                <option value="">Seleccione...</option>
+                {SEXO_OPTIONS.map(op => (
+                  <option key={op.value} value={op.value}>{op.label}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Teléfono" error={errores.telefono}>
+              <input
+                type="tel"
+                value={miembro.telefono}
+                onChange={e => set('telefono', e.target.value)}
+                placeholder="Ej. 3001234567"
+                className={inputCls()}
+              />
+            </Field>
+
+            <Field label="Correo electrónico" error={errores.correo_electronico} full>
+              <input
+                type="email"
+                value={miembro.correo_electronico}
+                onChange={e => set('correo_electronico', e.target.value)}
+                placeholder="ejemplo@correo.com"
+                className={inputCls()}
+              />
+            </Field>
           </div>
         )}
       </div>
@@ -288,15 +325,19 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
             )}
 
             <div className="sm:col-span-2">
-              <label className="flex items-center gap-3 cursor-pointer w-fit">
+              <label className={`flex items-center gap-3 w-fit ${cabezaOcupada && !miembro.es_cabeza_hogar ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
                 <input
                   type="checkbox"
                   checked={miembro.es_cabeza_hogar}
+                  disabled={cabezaOcupada && !miembro.es_cabeza_hogar}
                   onChange={e => set('es_cabeza_hogar', e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
                 />
                 <span className="text-sm font-medium text-gray-700">
                   Es cabeza de hogar
+                  {cabezaOcupada && !miembro.es_cabeza_hogar && (
+                    <span className="ml-2 text-xs text-gray-400">(ya asignado a otro miembro)</span>
+                  )}
                 </span>
               </label>
             </div>
@@ -312,13 +353,16 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
         {secAbiertas.has('socioecon') && (
           <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Nivel educativo" error={errores.nivel_educativo} full>
-              <input
-                type="text"
+              <select
                 value={miembro.nivel_educativo}
                 onChange={e => set('nivel_educativo', e.target.value)}
-                placeholder="Ej. Bachiller, Técnico, Universitario"
                 className={inputCls()}
-              />
+              >
+                <option value="">Seleccione...</option>
+                {NIVEL_EDUCATIVO_OPTIONS.map(op => (
+                  <option key={op.value} value={op.value}>{op.label}</option>
+                ))}
+              </select>
             </Field>
 
             <Field label="Situación laboral" error={errores.situacion_laboral}>
@@ -347,13 +391,16 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
             </Field>
 
             <Field label="Fuente de ingresos" error={errores.fuente_ingresos}>
-              <input
-                type="text"
+              <select
                 value={miembro.fuente_ingresos}
                 onChange={e => set('fuente_ingresos', e.target.value)}
-                placeholder="Ej. Empleo formal, ventas, etc."
                 className={inputCls()}
-              />
+              >
+                <option value="">Seleccione...</option>
+                {FUENTE_INGRESOS_OPTIONS.map(op => (
+                  <option key={op.value} value={op.value}>{op.label}</option>
+                ))}
+              </select>
             </Field>
           </div>
         )}
@@ -377,14 +424,16 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
             {miembro.pertenece_sisben === true && (
               <>
                 <Field label="Grupo SISBEN" error={errores.grupo_sisben}>
-                  <input
-                    type="text"
+                  <select
                     value={miembro.grupo_sisben}
                     onChange={e => set('grupo_sisben', e.target.value)}
-                    placeholder="Ej. A1, B3, C12"
                     className={inputCls()}
-                    maxLength={10}
-                  />
+                  >
+                    <option value="">Seleccione...</option>
+                    {GRUPO_SISBEN_OPTIONS.map(op => (
+                      <option key={op.value} value={op.value}>{op.label}</option>
+                    ))}
+                  </select>
                 </Field>
 
                 <Field label="Puntaje SISBEN" error={errores.puntaje_sisben}>
@@ -424,13 +473,16 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-amber-300">
                 <SeccionHeader title="Discapacidad" />
                 <Field label="Grado de discapacidad">
-                  <input
-                    type="text"
+                  <select
                     value={miembro.grado_discapacidad}
                     onChange={e => set('grado_discapacidad', e.target.value)}
-                    placeholder="Ej. Moderada, Severa"
                     className={inputCls()}
-                  />
+                  >
+                    <option value="">Seleccione...</option>
+                    {GRADO_DISCAPACIDAD_OPTIONS.map(op => (
+                      <option key={op.value} value={op.value}>{op.label}</option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="¿Tiene certificado de discapacidad?">
                   <BooleanSelect
@@ -470,13 +522,16 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
                   />
                 </Field>
                 <Field label="Hecho victimizante">
-                  <input
-                    type="text"
+                  <select
                     value={miembro.hecho_victimizante}
                     onChange={e => set('hecho_victimizante', e.target.value)}
-                    placeholder="Ej. Desplazamiento, homicidio"
                     className={inputCls()}
-                  />
+                  >
+                    <option value="">Seleccione...</option>
+                    {HECHO_VICTIMIZANTE_OPTIONS.map(op => (
+                      <option key={op.value} value={op.value}>{op.label}</option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Fecha del hecho victimizante">
                   <input
@@ -562,98 +617,19 @@ export const MiembroForm: React.FC<Props> = ({ miembro, onChange, errores = {} }
                   />
                 </Field>
                 <Field label="Estado del proceso" full>
-                  <input
-                    type="text"
+                  <select
                     value={miembro.estado_proceso_reincorporacion}
                     onChange={e => set('estado_proceso_reincorporacion', e.target.value)}
                     className={inputCls()}
-                  />
+                  >
+                    <option value="">Seleccione...</option>
+                    {ESTADO_REINCORPORACION_OPTIONS.map(op => (
+                      <option key={op.value} value={op.value}>{op.label}</option>
+                    ))}
+                  </select>
                 </Field>
               </div>
             )}
-          </div>
-        )}
-      </div>
-
-      {/* ══ 6. DOCUMENTOS DEL MIEMBRO ══════════════════════════════════════ */}
-      <div className="border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-          <AccordionHeader id="docs-miembro" titulo="Documentos del miembro" />
-        </div>
-        {secAbiertas.has('docs-miembro') && (
-          <div className="p-4 flex flex-col gap-3">
-            {miembro.documentos.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-2">
-                Sin documentos agregados. Use el botón para adjuntar archivos.
-              </p>
-            )}
-
-            {miembro.documentos.map((doc, i) => (
-              <div
-                key={i}
-                className="flex flex-col sm:flex-row gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
-              >
-                <select
-                  value={doc.tipo_documento}
-                  onChange={e =>
-                    actualizarDoc(i, {
-                      tipo_documento: e.target.value as DocumentoMiembroEntry['tipo_documento'],
-                    })
-                  }
-                  className="flex-shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:w-52"
-                >
-                  <option value="">Tipo de documento...</option>
-                  {TIPOS_DOCUMENTO_MIEMBRO.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-
-                <label className="flex-1 flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
-                  <span className="text-sm text-gray-500 truncate">
-                    {doc.file ? doc.file.name : 'Seleccionar archivo...'}
-                  </span>
-                  <input
-                    type="file"
-                    className="sr-only"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={e => actualizarDoc(i, { file: e.target.files?.[0] ?? null })}
-                  />
-                </label>
-
-                <input
-                  type="text"
-                  value={doc.observaciones}
-                  onChange={e => actualizarDoc(i, { observaciones: e.target.value })}
-                  placeholder="Observaciones..."
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => eliminarDoc(i)}
-                  className="flex-shrink-0 p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                  title="Eliminar"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={agregarDocMiembro}
-              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar documento
-            </button>
           </div>
         )}
       </div>

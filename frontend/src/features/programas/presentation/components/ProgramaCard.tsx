@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { EstadoPrograma } from '../../domain/programa';
 
 export interface ProgramaCardItem {
@@ -89,6 +90,8 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
   isEstadoPending = false,
 }) => {
   const config = estadoConfig[programa.estado] ?? estadoConfig[EstadoPrograma.BORRADOR];
+  const navigate = useNavigate();
+  const isCulminado = programa.estado === EstadoPrograma.CULMINADO;
 
   const accionTitle: Record<string, string> = {
     [EstadoPrograma.ACTIVO]: 'Publica el programa para operación normal. Asegúrate de tener módulos configurados.',
@@ -98,7 +101,9 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm ${config.border} hover:shadow-md transition-shadow duration-200 flex flex-col`}
+      className={`rounded-lg shadow-sm ${config.border} transition-shadow duration-200 flex flex-col ${
+        isCulminado ? 'bg-gray-100 opacity-75' : 'bg-white hover:shadow-md'
+      }`}
     >
       <div className="p-5 flex-1">
         {/* Header: badge de estado + código */}
@@ -137,14 +142,43 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
       </div>
 
       {/* Acciones */}
-      <div className="px-5 py-3 border-t border-gray-100 flex items-center gap-2">
+      {isCulminado ? (
+        <>
+          <div className="px-5 py-3 border-t border-gray-200">
+            <button
+              onClick={() => navigate(`/programas/${programa.id}/sorteo`)}
+              className="w-full text-sm font-medium text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-md border border-indigo-200 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Ver beneficiarios
+            </button>
+          </div>
+          <div className="px-5 pb-4">
+            <button
+              onClick={() => {
+                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+                window.open(`${API_BASE}/postulaciones/sorteo/descargar/?programa_id=${programa.id}`, '_blank');
+              }}
+              className="w-full text-sm font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-md border border-emerald-200 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Descargar lista
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="px-5 py-3 border-t border-gray-100 flex items-center gap-2">
         <button
           onClick={() => onEdit?.(programa)}
           className="flex-1 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-md border border-gray-200 transition-colors"
         >
-          Editar
+          Editor
         </button>
-        {programa.estado !== EstadoPrograma.CULMINADO && (
         <button
           onClick={() => onCambiarEstado?.(programa.id, config.accionEstado)}
           disabled={isEstadoPending}
@@ -163,8 +197,6 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
             </>
           ) : config.accionLabel}
         </button>
-        )}
-        {programa.estado !== EstadoPrograma.CULMINADO && (
         <button
           onClick={() => onDelete?.(programa.id)}
           className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
@@ -183,7 +215,6 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
             />
           </svg>
         </button>
-        )}
       </div>
 
       {/* Gestionar Etapas */}
@@ -198,6 +229,8 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
           Gestionar Etapas
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 };

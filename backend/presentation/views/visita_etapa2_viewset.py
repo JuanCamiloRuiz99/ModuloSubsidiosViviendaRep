@@ -24,6 +24,7 @@ from infrastructure.database.models import (
     DatosHogarEtapa2,
     DocumentoVisitaEtapa2,
 )
+from shared.file_validators import validate_uploaded_file
 from presentation.serializers.visita_etapa2_serializer import (
     VisitaListSerializer,
     VisitaDetailSerializer,
@@ -70,6 +71,8 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
             qs = qs.filter(visita_efectiva=efectiva.lower() == 'true')
         if postulacion := params.get('postulacion'):
             qs = qs.filter(postulacion_id=postulacion)
+        if estado_visita := params.get('estado_visita'):
+            qs = qs.filter(estado_visita=estado_visita)
 
         return qs
 
@@ -86,11 +89,55 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
         self._actualizar_postulacion_si_efectiva(visita)
 
     def _actualizar_postulacion_si_efectiva(self, visita):
-        """Si la visita es efectiva, marca la postulación como VISITA_REALIZADA."""
+        """
+        Si la visita es efectiva, marca la postulación como VISITA_REALIZADA.
+        Si la visita NO es efectiva, marca la postulación como VISITA_PENDIENTE.
+        """
+        postulacion = visita.postulacion
+        if not postulacion:
+            return
+
         if visita.visita_efectiva:
-            postulacion = visita.postulacion
+            if postulacion.estado not in ('VISITA_REALIZADA', 'APROBADA', 'RECHAZADA'):
+                postulacion.estado = 'VISITA_REALIZADA'
+                postulacion.save(update_fields=['estado'])
+        else:
+            # Visita no efectiva → volver a pendiente para reprogramar
+            if postulacion.estado in ('VISITA_PROGRAMADA',):
+                postulacion.estado = 'VISITA_PENDIENTE'
+                postulacion.save(update_fields=['estado'])
+
+    def _check_docs_y_actualizar_estado(self, visita):
+        """
+        Regla automática de estado:
+          • Si la visita tiene al menos un documento activo  →  COMPLETADA / VISITA_REALIZADA.
+          • Si todos los documentos se eliminaron            →  PROGRAMADA / VISITA_PENDIENTE.
+        No toca visitas CANCELADAS ni postulaciones ya APROBADAS/RECHAZADAS.
+        """
+        if visita.estado_visita == 'CANCELADA':
+            return
+
+        tiene_docs = visita.documentos_etapa2.filter(activo_logico=True).exists()
+        postulacion = visita.postulacion
+
+        if tiene_docs:
+            # Marcar como realizada
+            if visita.estado_visita != 'COMPLETADA':
+                visita.estado_visita = 'COMPLETADA'
+                if not visita.fecha_realizacion:
+                    visita.fecha_realizacion = now()
+                visita.save(update_fields=['estado_visita', 'fecha_realizacion'])
             if postulacion and postulacion.estado not in ('VISITA_REALIZADA', 'APROBADA', 'RECHAZADA'):
                 postulacion.estado = 'VISITA_REALIZADA'
+                postulacion.save(update_fields=['estado'])
+        else:
+            # Sin documentos → volver a pendiente/programada
+            if visita.estado_visita == 'COMPLETADA':
+                visita.estado_visita = 'PROGRAMADA'
+                visita.fecha_realizacion = None
+                visita.save(update_fields=['estado_visita', 'fecha_realizacion'])
+            if postulacion and postulacion.estado == 'VISITA_REALIZADA':
+                postulacion.estado = 'VISITA_PROGRAMADA'
                 postulacion.save(update_fields=['estado'])
 
     # ── Datos Hogar Etapa 2 ────────────────────────────────────────────────── #
@@ -157,6 +204,10 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
         upload = DocumentoVisitaUploadSerializer(data=request.data)
         upload.is_valid(raise_exception=True)
 
+        file_error = validate_uploaded_file(upload.validated_data['archivo'])
+        if file_error:
+            return Response({'detail': file_error}, status=status.HTTP_400_BAD_REQUEST)
+
         doc = DocumentoVisitaEtapa2.objects.create(
             visita=visita,
             tipo_documento=upload.validated_data['tipo_documento'],
@@ -165,17 +216,8 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
             observaciones=upload.validated_data.get('observaciones', ''),
         )
 
-        # ── Req 31: Auto state change al cargar informe técnico ─────────── #
-        tipo = upload.validated_data['tipo_documento']
-        if tipo == 'INFORME_TECNICO':
-            postulacion = visita.postulacion
-            if postulacion.estado in ('VISITA_PENDIENTE', 'EN_REVISION'):
-                postulacion.estado = 'VISITA_REALIZADA'
-                postulacion.save(update_fields=['estado'])
-            if visita.estado_visita != 'COMPLETADA':
-                visita.estado_visita = 'COMPLETADA'
-                visita.fecha_realizacion = now()
-                visita.save(update_fields=['estado_visita', 'fecha_realizacion'])
+        # Actualizar estado según documentos presentes
+        self._check_docs_y_actualizar_estado(visita)
 
         return Response(
             DocumentoVisitaEtapa2Serializer(doc).data,
@@ -199,4 +241,9 @@ class VisitaEtapa2ViewSet(viewsets.ModelViewSet):
         doc.activo_logico = False
         doc.fecha_eliminacion = now()
         doc.save(update_fields=['activo_logico', 'fecha_eliminacion'])
+
+        # Revertir estado si ya no quedan documentos
+        visita.refresh_from_db()
+        self._check_docs_y_actualizar_estado(visita)
+
         return Response(status=status.HTTP_204_NO_CONTENT)

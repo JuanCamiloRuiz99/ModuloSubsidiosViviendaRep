@@ -32,7 +32,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
 
     # ============ Operaciones de Creación ============
 
-    async def crear(self, usuario: Usuario) -> Usuario:
+    def crear(self, usuario: Usuario) -> Usuario:
         """
         Crea un nuevo usuario en la base de datos
         
@@ -62,7 +62,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
 
     # ============ Operaciones de Lectura ============
 
-    async def obtener_por_id(self, id_usuario: int) -> Optional[Usuario]:
+    def obtener_por_id(self, id_usuario: int) -> Optional[Usuario]:
         """
         Obtiene un usuario por su ID
         
@@ -81,7 +81,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
             logger.debug(f"Usuario con ID {id_usuario} no encontrado")
             return None
 
-    async def obtener_por_correo(self, correo: str) -> Optional[Usuario]:
+    def obtener_por_correo(self, correo: str) -> Optional[Usuario]:
         """
         Obtiene un usuario por su correo electrónico
         
@@ -100,7 +100,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
             logger.debug(f"Usuario con correo {correo} no encontrado")
             return None
 
-    async def obtener_todos(
+    def obtener_todos(
         self,
         filtros: Optional[Dict[str, Any]] = None,
         pagina: int = 1,
@@ -164,7 +164,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
             logger.error(f"Error al obtener usuarios: {str(e)}")
             raise
 
-    async def obtener_por_rol(self, rol: str) -> List[Usuario]:
+    def obtener_por_rol(self, rol: str) -> List[Usuario]:
         """
         Obtiene todos los usuarios con un rol específico
         
@@ -181,7 +181,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
 
     # ============ Operaciones de Actualización ============
 
-    async def actualizar(self, usuario: Usuario) -> Usuario:
+    def actualizar(self, usuario: Usuario) -> Usuario:
         """
         Actualiza un usuario existente
         
@@ -234,7 +234,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
 
     # ============ Operaciones de Eliminación ============
 
-    async def eliminar(self, id_usuario: int) -> bool:
+    def eliminar(self, id_usuario: int) -> bool:
         """
         Elimina lógicamente un usuario
         
@@ -261,7 +261,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
 
     # ============ Operaciones de Validación ============
 
-    async def existe_correo(self, correo: str, exluir_id: Optional[int] = None) -> bool:
+    def existe_correo(self, correo: str, exluir_id: Optional[int] = None) -> bool:
         """
         Verifica si existe un correo (para otro usuario)
         
@@ -281,7 +281,7 @@ class DjangoUsuarioRepository(UsuarioRepository):
         
         return queryset.exists()
 
-    async def contar(self, filtro_activos: bool = True) -> int:
+    def contar(self, filtro_activos: bool = True) -> int:
         """
         Cuenta usuarios
         

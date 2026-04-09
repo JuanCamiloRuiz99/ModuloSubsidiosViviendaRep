@@ -60,6 +60,7 @@ class VisitaListSerializer(serializers.ModelSerializer):
         model = Visita
         fields = [
             'id', 'postulacion', 'etapa', 'encuestador', 'encuestador_nombre',
+            'estado_visita', 'fecha_programada',
             'fecha_visita', 'visita_efectiva', 'motivo_no_efectiva',
             'nombre_encuestado', 'telefono_contacto',
             'fecha_registro', 'activo_logico',

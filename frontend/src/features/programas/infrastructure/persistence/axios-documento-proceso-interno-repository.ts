@@ -31,7 +31,9 @@ export type TipoDocumentoProcesoInterno =
   | 'CONCEPTO_GESTION_RIESGO'
   | 'RIESGO_INUNDACION_REMOCION'
   | 'CERTIFICACION_AGUA'
-  | 'CERTIFICACION_ENERGIA';
+  | 'CERTIFICACION_ENERGIA'
+  | 'ORFEO_SOLICITUD'
+  | 'ORFEO_RESPUESTA';
 
 export interface DocumentoProcesoInternoData {
   id: number;
@@ -51,8 +53,6 @@ export interface SubirDocumentoPayload {
   postulacion: number;
   tipo_documento: TipoDocumentoProcesoInterno;
   archivo: File;
-  numero_radicado_orfeo_solicitud?: string;
-  numero_radicado_orfeo_respuesta?: string;
   observaciones?: string;
 }
 
@@ -72,12 +72,6 @@ export const documentoProcesoInternoRepository = {
     formData.append('postulacion', String(payload.postulacion));
     formData.append('tipo_documento', payload.tipo_documento);
     formData.append('archivo', payload.archivo);
-    if (payload.numero_radicado_orfeo_solicitud) {
-      formData.append('numero_radicado_orfeo_solicitud', payload.numero_radicado_orfeo_solicitud);
-    }
-    if (payload.numero_radicado_orfeo_respuesta) {
-      formData.append('numero_radicado_orfeo_respuesta', payload.numero_radicado_orfeo_respuesta);
-    }
     if (payload.observaciones) {
       formData.append('observaciones', payload.observaciones);
     }

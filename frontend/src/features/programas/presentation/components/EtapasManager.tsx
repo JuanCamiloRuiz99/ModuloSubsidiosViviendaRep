@@ -40,7 +40,8 @@ export const EtapasManager: React.FC<EtapasManagerProps> = ({
   const nextNumero = etapas.length + 1;
   const ultimaEtapa = etapas[etapas.length - 1];
   const puedeCrearNuevaEtapa =
-    etapas.length === 0 || ultimaEtapa?.finalizada === true;
+    programaEstado !== 'CULMINADO' &&
+    (etapas.length === 0 || ultimaEtapa?.finalizada === true);
 
   const crearMutation = useCrearEtapa(programaId);
   const actualizarMutation = useActualizarEtapa(programaId);

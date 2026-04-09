@@ -391,6 +391,16 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
+              ) : consultaResultados && consultaResultados.length === 0 ? (
+                <div className="text-center py-6">
+                  <div className="mx-auto w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 text-sm font-medium">No se encontraron postulaciones</p>
+                  <p className="text-gray-400 text-xs mt-1">Verifique el número de documento e intente de nuevo.</p>
+                </div>
               ) : null}
             </div>
 
@@ -542,6 +552,7 @@ const ESTADO_COLORS: Record<string, string> = {
   EN_REVISION:         'bg-yellow-100 text-yellow-800',
   SUBSANACION:         'bg-orange-100 text-orange-800',
   VISITA_PENDIENTE:    'bg-purple-100 text-purple-800',
+  VISITA_PROGRAMADA:   'bg-blue-100 text-blue-800',
   VISITA_REALIZADA:        'bg-indigo-100 text-indigo-800',
   DOCUMENTOS_INCOMPLETOS:  'bg-teal-100 text-teal-800',
   DOCUMENTOS_CARGADOS:     'bg-cyan-100 text-cyan-800',

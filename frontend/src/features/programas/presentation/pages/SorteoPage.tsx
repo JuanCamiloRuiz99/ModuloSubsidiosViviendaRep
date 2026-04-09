@@ -9,6 +9,7 @@ import React, { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../../../core/services';
+import { useEtapas } from '../hooks/useEtapas';
 
 // ── Tipos ─────────────────────────────────────────────────────────────────── //
 
@@ -56,6 +57,10 @@ export const SorteoPage: React.FC = () => {
   const [tabResultado, setTabResultado] = useState<'beneficiados' | 'no_beneficiarios'>('beneficiados');
 
   // ── Queries ─────────────────────────────────────────────────────────── //
+
+  const { data: etapas = [], isLoading: loadingEtapas } = useEtapas(programaId!);
+  const etapasAbiertas = etapas.filter((e: any) => !e.finalizada);
+  const todasCerradas = etapas.length > 0 && etapasAbiertas.length === 0;
 
   const { data: estado, isLoading: loadingEstado } = useQuery<SorteoEstado>({
     queryKey: ['sorteo-estado', programaId],
@@ -142,7 +147,7 @@ export const SorteoPage: React.FC = () => {
       </div>
 
       {/* ═══ Loading ═══ */}
-      {(loadingEstado || loadingElegibles || loadingResultados) && (
+      {(loadingEstado || loadingElegibles || loadingResultados || loadingEtapas) && (
         <div className="flex items-center justify-center py-12">
           <Spinner className="h-6 w-6 text-amber-500" />
         </div>
@@ -165,8 +170,36 @@ export const SorteoPage: React.FC = () => {
         </div>
       )}
 
+      {/* ═══ Etapas no cerradas ═══ */}
+      {!loadingEstado && !loadingEtapas && !sorteoYaHecho && !todasCerradas && etapas.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-amber-800 mb-1">No se puede ejecutar el sorteo</h2>
+              <p className="text-sm text-amber-700 mb-3">
+                Para ejecutar el sorteo, <strong>todas las etapas deben estar cerradas (finalizadas)</strong>.
+                Actualmente hay <strong>{etapasAbiertas.length}</strong> etapa(s) sin finalizar:
+              </p>
+              <ul className="text-sm text-amber-700 space-y-1">
+                {etapasAbiertas.map((e: any) => (
+                  <li key={e.id} className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                    Etapa {e.numero_etapa}: {e.modulo_principal?.replace(/_/g, ' ')}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ Sin elegibles ═══ */}
-      {!loadingEstado && !loadingElegibles && !sorteoYaHecho && totalElegibles === 0 && (
+      {!loadingEstado && !loadingElegibles && !loadingEtapas && !sorteoYaHecho && todasCerradas && totalElegibles === 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
           <div className="flex justify-center mb-3">
             <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
@@ -184,7 +217,7 @@ export const SorteoPage: React.FC = () => {
       )}
 
       {/* ═══ Panel de sorteo (antes de ejecutar) ═══ */}
-      {!loadingEstado && !loadingElegibles && !sorteoYaHecho && totalElegibles > 0 && (
+      {!loadingEstado && !loadingElegibles && !loadingEtapas && !sorteoYaHecho && todasCerradas && totalElegibles > 0 && (
         <>
           {/* Advertencia */}
           <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800 flex items-start gap-3">
@@ -259,8 +292,9 @@ export const SorteoPage: React.FC = () => {
           <div className="flex justify-center">
             <button
               type="button"
+              disabled={ejecutarMutation.isPending}
               onClick={() => setShowConfirm(true)}
-              className="flex items-center gap-2 px-8 py-3 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-xl shadow-lg transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-8 py-3 text-base font-bold text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl shadow-lg transition-colors cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />

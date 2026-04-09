@@ -10,16 +10,11 @@ export class ActualizarUsuarioUseCase {
 
   async execute(dto: ActualizarUsuarioDTO): Promise<ActualizarUsuarioResponseDTO> {
     try {
-      console.log(`🔍 ActualizarUsuarioUseCase - Buscando usuario con ID: ${dto.id}`);
-      
       // Obtener usuario existente
       const usuarioExistente = await this.usuarioRepository.findById(dto.id);
       if (!usuarioExistente) {
-        console.error(`❌ Usuario NO encontrado con ID: ${dto.id}`);
         throw new Error(`Usuario con ID ${dto.id} no encontrado`);
       }
-
-      console.log(`✅ Usuario encontrado:`, usuarioExistente);
 
       // Actualizar propiedades
       if (dto.nombre !== undefined) usuarioExistente.nombre = dto.nombre;
@@ -30,12 +25,8 @@ export class ActualizarUsuarioUseCase {
       if (dto.centroAtencion !== undefined) usuarioExistente.centroAtencion = dto.centroAtencion;
       if (dto.telefono !== undefined) usuarioExistente.telefono = dto.telefono;
 
-      console.log(`📝 Usuario actualizado en memoria:`, usuarioExistente);
-
       // Persistir cambios
       const usuarioActualizado = await this.usuarioRepository.update(usuarioExistente);
-
-      console.log(`💾 Usuario persistido en backend:`, usuarioActualizado);
 
       // Retornar respuesta
       return {

@@ -63,7 +63,6 @@ export const ProgramasPage: React.FC = () => {
       await crearMutation.mutateAsync(dto);
       setIsCreateModalOpen(false);
       showToast(`✅ Programa "${formData.nombre}" creado exitosamente`);
-      void refetch();
     } catch (err) {
       showToast(`❌ ${err instanceof Error ? err.message : 'Error al crear programa'}`, 'error');
       throw err;
@@ -87,7 +86,6 @@ export const ProgramasPage: React.FC = () => {
       setIsEditModalOpen(false);
       setSelectedPrograma(null);
       showToast('✅ Programa actualizado exitosamente');
-      void refetch();
     } catch (err) {
       showToast(`❌ ${err instanceof Error ? err.message : 'Error al actualizar programa'}`, 'error');
       throw err;
@@ -118,9 +116,8 @@ export const ProgramasPage: React.FC = () => {
     setIsEstadoPending(strId);
     try {
       await cambiarEstadoMutation.mutateAsync({ id: strId, nuevoEstado });
-      const labels: Record<string, string> = { ACTIVO: 'publicado', INHABILITADO: 'inhabilitado', BORRADOR: 'pasado a borrador' };
+      const labels: Record<string, string> = { ACTIVO: 'publicado', INHABILITADO: 'inhabilitado', BORRADOR: 'pasado a borrador', CULMINADO: 'culminado' };
       showToast(`✅ Programa ${labels[nuevoEstado] ?? nuevoEstado} exitosamente`);
-      void refetch();
     } catch (err: any) {
       const msg =
         err?.response?.data?.error ??

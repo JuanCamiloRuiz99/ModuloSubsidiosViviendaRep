@@ -31,10 +31,17 @@ interface RegistroHogarResponse extends RegistroHogarResult {
 
 // ── Helpers ──────────────────────────────────────────────────────────────── //
 
-/** Serializa el payload de un miembro eliminando los campos de só control de UI. */
+/** Serializa el payload de un miembro eliminando los campos de solo control de UI.
+ *  Convierte cadenas vacías a null para campos numéricos/fecha que el backend rechaza como ''. */
 function serializarMiembro(m: MiembroHogarForm) {
-  const { _localId: _, documentos: __, ...rest } = m;
-  return rest;
+  const { documentos: _, ...rest } = m;
+  return {
+    ...rest,
+    ingresos_mensuales:      rest.ingresos_mensuales      === '' ? null : rest.ingresos_mensuales,
+    puntaje_sisben:          rest.puntaje_sisben          === '' ? null : rest.puntaje_sisben,
+    fecha_hecho_victimizante: rest.fecha_hecho_victimizante === '' ? null : rest.fecha_hecho_victimizante,
+    fecha_desplazamiento:    rest.fecha_desplazamiento    === '' ? null : rest.fecha_desplazamiento,
+  };
 }
 
 // ── Repositorio ──────────────────────────────────────────────────────────── //
@@ -107,11 +114,14 @@ export const registroHogarRepository = {
     // 1. Enviar datos estructurados
     const resultado = await this.enviarRegistro(etapaId, infoHogar, miembros);
 
-    // 2. Subir documentos del hogar (en paralelo, sin bloquear por errores)
+    // 2. Subir documentos del hogar (en paralelo, recopilar errores)
+    const fallos: string[] = [];
     const uploadsHogar = documentosHogar
       .filter((d): d is DocumentoHogarEntry & { file: File } => d.file !== null)
       .map(d =>
-        this.subirDocumentoHogar(resultado.id_postulacion, d).catch(() => undefined),
+        this.subirDocumentoHogar(resultado.id_postulacion, d).catch(() => {
+          fallos.push(`Documento hogar: ${d.tipo_documento}`);
+        }),
       );
 
     // 3. Subir documentos por miembro
@@ -121,11 +131,17 @@ export const registroHogarRepository = {
       return m.documentos
         .filter((d): d is DocumentoMiembroEntry & { file: File } => d.file !== null)
         .map(d =>
-          this.subirDocumentoMiembro(miembroId, d).catch(() => undefined),
+          this.subirDocumentoMiembro(miembroId, d).catch(() => {
+            fallos.push(`Documento miembro ${m.primer_nombre}: ${d.tipo_documento}`);
+          }),
         );
     });
 
     await Promise.all([...uploadsHogar, ...uploadsMiembros]);
+
+    if (fallos.length > 0) {
+      resultado.advertencias = fallos;
+    }
 
     return resultado;
   },

@@ -10,8 +10,13 @@ import React from 'react';
 import type {
   DocumentoHogarEntry,
   MiembroHogarForm,
+  TipoDocumentoMiembro,
 } from '../../../domain/registro-hogar.types';
-import { TIPOS_DOCUMENTO_HOGAR, TIPOS_DOCUMENTO_MIEMBRO } from '../../../domain/registro-hogar.types';
+import {
+  TIPOS_DOCUMENTO_HOGAR,
+  DOCS_REQUERIDOS_MIEMBRO,
+  TIPOS_DOCUMENTO_MIEMBRO,
+} from '../../../domain/registro-hogar.types';
 import type { DocumentoMiembroEntry } from '../../../domain/registro-hogar.types';
 
 interface Props {
@@ -98,6 +103,21 @@ const FilaDocumento: React.FC<{
 
 // ── Componente principal ──────────────────────────────────────────────────── //
 
+/** Set de tipos que siempre son fijos (foto cédula frente/reverso). */
+const FIXED_TIPOS = new Set<string>(DOCS_REQUERIDOS_MIEMBRO.map(d => d.value));
+
+/** Documentos condicionales que se requieren según las características del miembro. */
+function getConditionalDocs(miembro: MiembroHogarForm): Array<{ value: TipoDocumentoMiembro; label: string }> {
+  const docs: Array<{ value: TipoDocumentoMiembro; label: string }> = [];
+  if (miembro.pertenece_sisben)
+    docs.push({ value: 'CERTIFICADO_SISBEN', label: 'Certificado SISBEN' });
+  if (miembro.tiene_discapacidad)
+    docs.push({ value: 'CERTIFICADO_DISCAPACIDAD', label: 'Certificado de discapacidad' });
+  if (miembro.es_victima_conflicto || miembro.es_desplazado)
+    docs.push({ value: 'CERTIFICADO_VICTIMA', label: 'Certificado registro de víctima (RUV)' });
+  return docs;
+}
+
 export const SeccionDocumentos: React.FC<Props> = ({
   documentosHogar,
   onChangeDocHogar,
@@ -109,30 +129,49 @@ export const SeccionDocumentos: React.FC<Props> = ({
       documentosHogar.map(d => (d.tipo_documento === tipo ? { ...d, ...partial } : d)),
     );
 
-  const updateMiembroDoc = (
-    miembroLocalId: string,
-    docs: DocumentoMiembroEntry[],
-    idx: number,
+  /** Actualiza un doc requerido fijo buscando por tipo_documento.
+   *  Si el tipo no existe aún en el array, lo agrega (para condicionales). */
+  const updateFixedMiembroDoc = (
+    miembro: MiembroHogarForm,
+    tipo: string,
     partial: Partial<DocumentoMiembroEntry>,
   ) => {
-    const updated = docs.map((d, i) => (i === idx ? { ...d, ...partial } : d));
-    onChangeDocMiembro(miembroLocalId, updated);
+    const exists = miembro.documentos.some(d => d.tipo_documento === tipo);
+    const updated = exists
+      ? miembro.documentos.map(d => d.tipo_documento === tipo ? { ...d, ...partial } : d)
+      : [...miembro.documentos, { tipo_documento: tipo as DocumentoMiembroEntry['tipo_documento'], file: null, observaciones: '', ...partial }];
+    onChangeDocMiembro(miembro._localId, updated);
   };
 
-  const addMiembroDoc = (miembro: MiembroHogarForm) =>
+  /** Actualiza un doc opcional por su índice real en el array completo. */
+  const updateOptionalDoc = (
+    miembro: MiembroHogarForm,
+    realIdx: number,
+    partial: Partial<DocumentoMiembroEntry>,
+  ) => {
+    const updated = miembro.documentos.map((d, i) => (i === realIdx ? { ...d, ...partial } : d));
+    onChangeDocMiembro(miembro._localId, updated);
+  };
+
+  const addRegistroCivil = (miembro: MiembroHogarForm) =>
     onChangeDocMiembro(miembro._localId, [
       ...miembro.documentos,
-      { tipo_documento: '', file: null, observaciones: '' },
+      { tipo_documento: 'REGISTRO_CIVIL' as DocumentoMiembroEntry['tipo_documento'], file: null, observaciones: '' },
     ]);
 
-  const removeMiembroDoc = (miembro: MiembroHogarForm, idx: number) =>
+  const addDocByType = (miembro: MiembroHogarForm, tipo: TipoDocumentoMiembro) =>
+    onChangeDocMiembro(miembro._localId, [
+      ...miembro.documentos,
+      { tipo_documento: tipo, file: null, observaciones: '' },
+    ]);
+
+  const removeOptionalDoc = (miembro: MiembroHogarForm, realIdx: number) =>
     onChangeDocMiembro(
       miembro._localId,
-      miembro.documentos.filter((_, i) => i !== idx),
+      miembro.documentos.filter((_, i) => i !== realIdx),
     );
 
   const subidosHogar = documentosHogar.filter(d => d.file !== null).length;
-  const requierenHogar = TIPOS_DOCUMENTO_HOGAR.filter(t => t.requerido).length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -143,20 +182,20 @@ export const SeccionDocumentos: React.FC<Props> = ({
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
         <p className="text-sm text-amber-700">
-          Los archivos marcados con <span className="font-bold">*</span> son obligatorios para
-          completar la postulación. Formatos aceptados: PDF, JPG, PNG. Tamaño máximo: 5 MB.
+          Los archivos marcados con <span className="font-bold">*</span> son obligatorios.
+          Formatos aceptados: PDF, JPG, PNG. Tamaño máximo: 5 MB.
         </p>
       </div>
 
       {/* ── Documentos del hogar ─────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-gray-800">Documentos del hogar</h3>
+          <div>
+            <h3 className="text-sm font-bold text-gray-800">Documentos del hogar</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Documentos del predio y servicios públicos</p>
+          </div>
           <span className="text-xs text-gray-400 font-medium">
-            {subidosHogar} / {documentosHogar.length} archivos cargados
-            {subidosHogar >= requierenHogar && (
-              <span className="ml-1 text-green-600">✓ mínimo requerido</span>
-            )}
+            {subidosHogar} / {documentosHogar.length} cargados
           </span>
         </div>
         <div className="flex flex-col gap-2">
@@ -166,7 +205,6 @@ export const SeccionDocumentos: React.FC<Props> = ({
               <FilaDocumento
                 key={tipo.value}
                 label={tipo.label}
-                requerido={tipo.requerido}
                 file={entrada.file}
                 observaciones={entrada.observaciones}
                 onFile={f => updateHogar(tipo.value, { file: f })}
@@ -180,15 +218,52 @@ export const SeccionDocumentos: React.FC<Props> = ({
       {/* ── Documentos por miembro ───────────────────────── */}
       {miembros.length > 0 && (
         <section>
-          <h3 className="text-sm font-bold text-gray-800 mb-3">Documentos por miembro</h3>
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-gray-800">Documentos por miembro</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              La foto de cédula se solicita a cada persona. Puede adjuntar documentos adicionales (SISBEN, discapacidad, etc.) según corresponda.
+            </p>
+          </div>
           <div className="flex flex-col gap-6">
             {miembros.map((miembro, idx) => {
               const nombre = [miembro.primer_nombre, miembro.primer_apellido]
                 .filter(Boolean)
                 .join(' ') || `Miembro ${idx + 1}`;
 
+              const conditionalDocs = getConditionalDocs(miembro);
+              const requiredTipos = new Set<string>([
+                ...DOCS_REQUERIDOS_MIEMBRO.map(d => d.value),
+                ...conditionalDocs.map(d => d.value),
+              ]);
+
+              // Tipos opcionales ya agregados (excluye los requeridos del estado)
+              const optionalDocs = miembro.documentos
+                .map((doc, realIdx) => ({ doc, realIdx }))
+                .filter(({ doc }) => !requiredTipos.has(doc.tipo_documento as string));
+
+              // Tipos disponibles para agregar: los no requeridos y no presentes (salvo REGISTRO_CIVIL)
+              const tiposYaAgregados = new Set<string>(
+                optionalDocs
+                  .filter(({ doc }) => doc.tipo_documento !== 'REGISTRO_CIVIL')
+                  .map(({ doc }) => doc.tipo_documento as string),
+              );
+              const tiposDisponibles = TIPOS_DOCUMENTO_MIEMBRO.filter(
+                t => !requiredTipos.has(t.value) && !tiposYaAgregados.has(t.value),
+              );
+
+              const rcDocs = optionalDocs.filter(({ doc }) => doc.tipo_documento === 'REGISTRO_CIVIL');
+
+              const requiredUploaded =
+                DOCS_REQUERIDOS_MIEMBRO.every(t =>
+                  miembro.documentos.find(d => d.tipo_documento === t.value)?.file !== null,
+                ) &&
+                conditionalDocs.every(t =>
+                  miembro.documentos.find(d => d.tipo_documento === t.value)?.file !== null,
+                );
+
               return (
                 <div key={miembro._localId} className="border border-gray-200 rounded-xl overflow-hidden">
+                  {/* Header */}
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 flex-shrink-0">
                       {idx + 1}
@@ -197,88 +272,111 @@ export const SeccionDocumentos: React.FC<Props> = ({
                     {miembro.numero_documento && (
                       <span className="text-xs text-gray-400">— {miembro.numero_documento}</span>
                     )}
+                    {requiredUploaded && (
+                      <span className="ml-auto text-xs text-green-600 font-medium">✓ docs requeridos</span>
+                    )}
                   </div>
 
-                  <div className="p-4 flex flex-col gap-2">
-                    {miembro.documentos.length === 0 && (
-                      <p className="text-xs text-gray-400 text-center py-2">
-                        Sin documentos. Use el botón para adjuntar.
+                  <div className="p-4 flex flex-col gap-4">
+                    {/* Documentos requeridos (foto cédula + condicionales) */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                        Identificación — requerido
                       </p>
-                    )}
-
-                    {miembro.documentos.map((doc, i) => (
-                      <div
-                        key={i}
-                        className="flex flex-col sm:flex-row gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
-                      >
-                        <select
-                          value={doc.tipo_documento}
-                          onChange={e =>
-                            updateMiembroDoc(miembro._localId, miembro.documentos, i, {
-                              tipo_documento: e.target.value as DocumentoMiembroEntry['tipo_documento'],
-                            })
-                          }
-                          className="flex-shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 sm:w-52"
-                        >
-                          <option value="">Tipo de documento...</option>
-                          {TIPOS_DOCUMENTO_MIEMBRO.map(t => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                          ))}
-                        </select>
-
-                        <label className="flex-1 flex items-center gap-2 border border-dashed border-gray-300 rounded-lg px-3 py-2 cursor-pointer hover:border-blue-400 transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                          </svg>
-                          <span className={`text-sm truncate ${doc.file ? 'text-green-700 font-medium' : 'text-gray-400'}`}>
-                            {doc.file ? doc.file.name : 'Seleccionar archivo...'}
-                          </span>
-                          <input
-                            type="file"
-                            className="sr-only"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={e =>
-                              updateMiembroDoc(miembro._localId, miembro.documentos, i, {
-                                file: e.target.files?.[0] ?? null,
-                              })
-                            }
-                          />
-                        </label>
-
-                        <input
-                          type="text"
-                          value={doc.observaciones}
-                          onChange={e =>
-                            updateMiembroDoc(miembro._localId, miembro.documentos, i, {
-                              observaciones: e.target.value,
-                            })
-                          }
-                          placeholder="Observaciones..."
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeMiembroDoc(miembro, i)}
-                          className="flex-shrink-0 p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                      <div className="flex flex-col gap-2">
+                        {DOCS_REQUERIDOS_MIEMBRO.map(tipo => {
+                          const doc = miembro.documentos.find(d => d.tipo_documento === tipo.value);
+                          return (
+                            <FilaDocumento
+                              key={tipo.value}
+                              label={tipo.label}
+                              requerido
+                              file={doc?.file ?? null}
+                              observaciones={doc?.observaciones ?? ''}
+                              onFile={f => updateFixedMiembroDoc(miembro, tipo.value, { file: f })}
+                              onObs={v => updateFixedMiembroDoc(miembro, tipo.value, { observaciones: v })}
+                            />
+                          );
+                        })}
+                        {conditionalDocs.map(tipo => {
+                          const doc = miembro.documentos.find(d => d.tipo_documento === tipo.value);
+                          return (
+                            <FilaDocumento
+                              key={tipo.value}
+                              label={tipo.label}
+                              requerido
+                              file={doc?.file ?? null}
+                              observaciones={doc?.observaciones ?? ''}
+                              onFile={f => updateFixedMiembroDoc(miembro, tipo.value, { file: f })}
+                              onObs={v => updateFixedMiembroDoc(miembro, tipo.value, { observaciones: v })}
+                            />
+                          );
+                        })}
                       </div>
-                    ))}
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => addMiembroDoc(miembro)}
-                      className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-medium mt-1 w-fit"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
-                      Agregar documento
-                    </button>
+                    {/* Documentos opcionales (sin duplicar + REGISTRO_CIVIL múltiple) */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                        Documentos adicionales
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {optionalDocs.length === 0 && (
+                          <p className="text-xs text-gray-400 py-1">
+                            Puede agregar documentos adicionales usando el selector de abajo.
+                          </p>
+                        )}
+                        {optionalDocs.map(({ doc, realIdx }, i) => {
+                          const tipoLabel =
+                            TIPOS_DOCUMENTO_MIEMBRO.find(t => t.value === doc.tipo_documento)?.label
+                            ?? doc.tipo_documento;
+                          return (
+                            <div key={realIdx} className="flex items-start gap-2">
+                              <div className="flex-1">
+                                <FilaDocumento
+                                  label={doc.tipo_documento === 'REGISTRO_CIVIL' && rcDocs.length > 1
+                                    ? `Registro civil (${rcDocs.findIndex(r => r.realIdx === realIdx) + 1})`
+                                    : tipoLabel}
+                                  file={doc.file}
+                                  observaciones={doc.observaciones}
+                                  onFile={f => updateOptionalDoc(miembro, realIdx, { file: f })}
+                                  onObs={v => updateOptionalDoc(miembro, realIdx, { observaciones: v })}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeOptionalDoc(miembro, realIdx)}
+                                className="flex-shrink-0 mt-2 p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                title="Eliminar"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          );
+                        })}
+                        {tiposDisponibles.length > 0 && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <select
+                              defaultValue=""
+                              onChange={e => {
+                                if (e.target.value) {
+                                  addDocByType(miembro, e.target.value as TipoDocumentoMiembro);
+                                  e.target.value = '';
+                                }
+                              }}
+                              className="border border-dashed border-blue-300 text-blue-600 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white cursor-pointer"
+                            >
+                              <option value="">+ Agregar documento...</option>
+                              {tiposDisponibles.map(t => (
+                                <option key={t.value} value={t.value}>{t.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

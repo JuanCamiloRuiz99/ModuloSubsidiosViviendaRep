@@ -23,7 +23,7 @@ export const ConstructorFormularioPage: React.FC = () => {
   const navigate = useNavigate();
   const { id: programaId, etapaId } = useParams<{ id: string; etapaId: string }>();
   const queryClient = useQueryClient();
-  const { guardar, isSaving, saveError, isSuccess } = useGuardarFormulario();
+  const { guardar, isSaving, saveError, isSuccess, reset: resetGuardar } = useGuardarFormulario();
   const [accionExito, setAccionExito] = useState<string | null>(null);
 
   const inhabilitarMutation = useMutation({
@@ -199,7 +199,7 @@ export const ConstructorFormularioPage: React.FC = () => {
             {accionExito ?? 'Formulario guardado correctamente.'}
           </div>
           <button
-            onClick={() => setAccionExito(null)}
+            onClick={() => { setAccionExito(null); resetGuardar(); }}
             className="ml-4 text-green-500 hover:text-green-700 font-bold text-lg leading-none"
           >
             &times;

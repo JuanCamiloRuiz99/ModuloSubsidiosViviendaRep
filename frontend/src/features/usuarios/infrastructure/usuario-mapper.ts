@@ -72,37 +72,17 @@ export interface ActualizarUsuarioDTO {
 
 export class UsuarioMapper {
   static toDomain(dto: UsuarioDTO): Usuario {
-    // 📋 LOG COMPLETO DEL DTO RECIBIDO
-    console.log('📋 DTO COMPLETO RECIBIDO:', JSON.stringify(dto, null, 2));
-
     // Parsear nombre_completo si es necesario
     const [nombre, apellido] = this.parsearNombreCompleto(
       dto.nombre_completo || `${dto.nombre || ''} ${dto.apellido || ''}`.trim()
     );
 
-    // 🔍 DEBUG: Log de campos de ID disponibles
-    console.log('🔍 MAPPER: Campos de ID disponibles:', {
-      id_usuario: dto.id_usuario,
-      id: dto.id,
-      idUsuario: dto.idUsuario,
-    });
-
     // Mejorar captura de ID - intentar múltiples campos
     const id = dto.id_usuario ?? dto.id ?? dto.idUsuario ?? 0;
     
-    if (!id || id === 0) {
-      console.warn('⚠️ ADVERTENCIA: ID del usuario es 0 o vacío. DTO completo:', dto);
-      console.warn('📊 Revisa la respuesta del backend - ¿Qué campos tiene el objeto usuario?');
-    } else {
-      console.log(`✅ ID extraído correctamente: ${id}`);
-    }
-    
     const email = dto.correo || dto.email || '';
     
-    // ✅ NÚMERO DE DOCUMENTO
     const numeroDocumento = dto.numeroDocumento || dto.numero_documento || '';
-    
-    console.log(`✅ numeroDocumento extraído: "${numeroDocumento}"`);
     
     const idRol = dto.idRol || dto.id_rol || 0;
     const estado = this.mapearEstado(dto.activo);

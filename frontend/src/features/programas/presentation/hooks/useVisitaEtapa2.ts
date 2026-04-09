@@ -40,6 +40,15 @@ export function useCrearVisitaEtapa2() {
   });
 }
 
+export function useActualizarVisitaEtapa2() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: number } & Partial<CrearVisitaEtapa2Payload> & { fecha_programada?: string }) =>
+      visitaEtapa2Repository.actualizar(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['visitas-etapa2'] }),
+  });
+}
+
 export function useGuardarDatosHogarE2(visitaId: number) {
   const qc = useQueryClient();
   return useMutation({

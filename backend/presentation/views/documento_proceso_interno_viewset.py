@@ -2,6 +2,7 @@
 ViewSet para Documentos de Proceso Interno (Etapa 3 - Gestión Documental).
 """
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -10,6 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from infrastructure.database.models import DocumentoProcesoInterno, Postulacion
+from shared.file_validators import validate_uploaded_file
 from presentation.serializers.documento_proceso_interno_serializer import (
     DocumentoProcesoInternoSerializer,
     DocumentoProcesoInternoUploadSerializer,
@@ -30,7 +32,7 @@ class DocumentoProcesoInternoViewSet(viewsets.ModelViewSet):
     """
     queryset = DocumentoProcesoInterno.objects.filter(activo_logico=True)
     serializer_class = DocumentoProcesoInternoSerializer
-    permission_classes = [AllowAny]
+    http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -52,6 +54,9 @@ class DocumentoProcesoInternoViewSet(viewsets.ModelViewSet):
         d = upload_ser.validated_data
 
         archivo = d['archivo']
+        file_error = validate_uploaded_file(archivo)
+        if file_error:
+            return Response({'detail': file_error}, status=status.HTTP_400_BAD_REQUEST)
         doc = DocumentoProcesoInterno.objects.create(
             postulacion_id=d['postulacion'],
             tipo_documento=d['tipo_documento'],
@@ -90,23 +95,24 @@ class DocumentoProcesoInternoViewSet(viewsets.ModelViewSet):
         except DocumentoProcesoInterno.DoesNotExist:
             return Response({'detail': 'Documento no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        doc.activo_logico = False
-        doc.fecha_eliminacion = timezone.now()
-        doc.save(update_fields=['activo_logico', 'fecha_eliminacion'])
+        with transaction.atomic():
+            doc.activo_logico = False
+            doc.fecha_eliminacion = timezone.now()
+            doc.save(update_fields=['activo_logico', 'fecha_eliminacion'])
 
-        # ── Revertir estado si ya no tiene todos los documentos ────── #
-        postulacion = doc.postulacion
-        if postulacion.estado in ('DOCUMENTOS_CARGADOS', 'DOCUMENTOS_INCOMPLETOS'):
-            tipos_cargados = set(
-                DocumentoProcesoInterno.objects
-                .filter(postulacion_id=postulacion.pk, activo_logico=True)
-                .values_list('tipo_documento', flat=True)
-            )
-            if not tipos_cargados:
-                postulacion.estado = 'VISITA_REALIZADA'
-                postulacion.save(update_fields=['estado'])
-            elif not TIPOS_REQUERIDOS.issubset(tipos_cargados):
-                postulacion.estado = 'DOCUMENTOS_INCOMPLETOS'
-                postulacion.save(update_fields=['estado'])
+            # ── Revertir estado si ya no tiene todos los documentos ── #
+            postulacion = doc.postulacion
+            if postulacion.estado in ('DOCUMENTOS_CARGADOS', 'DOCUMENTOS_INCOMPLETOS'):
+                tipos_cargados = set(
+                    DocumentoProcesoInterno.objects
+                    .filter(postulacion_id=postulacion.pk, activo_logico=True)
+                    .values_list('tipo_documento', flat=True)
+                )
+                if not tipos_cargados:
+                    postulacion.estado = 'VISITA_REALIZADA'
+                    postulacion.save(update_fields=['estado'])
+                elif not TIPOS_REQUERIDOS.issubset(tipos_cargados):
+                    postulacion.estado = 'DOCUMENTOS_INCOMPLETOS'
+                    postulacion.save(update_fields=['estado'])
 
         return Response({'detail': 'Documento eliminado correctamente.'})

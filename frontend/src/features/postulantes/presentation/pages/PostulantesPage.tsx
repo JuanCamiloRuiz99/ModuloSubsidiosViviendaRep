@@ -80,6 +80,9 @@ export const PostulantesPage: React.FC = () => {
     subsanacion:      postulantes.filter(p => p.estado === 'SUBSANACION').length,
     visitaPendiente:  postulantes.filter(p => p.estado === 'VISITA_PENDIENTE').length,
     visitaRealizada:  postulantes.filter(p => p.estado === 'VISITA_REALIZADA').length,
+    docsCargados:     postulantes.filter(p => p.estado === 'DOCUMENTOS_CARGADOS').length,
+    beneficiados:     postulantes.filter(p => p.estado === 'BENEFICIADO').length,
+    noBeneficiarios:  postulantes.filter(p => p.estado === 'NO_BENEFICIARIO').length,
     aprobadas:        postulantes.filter(p => p.estado === 'APROBADA').length,
     rechazadas:       postulantes.filter(p => p.estado === 'RECHAZADA').length,
   }), [postulantes]);
@@ -133,7 +136,7 @@ export const PostulantesPage: React.FC = () => {
           className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
           <option value="">Todos los programas</option>
-          {programas.map(p => (
+          {programas.filter(p => p.estado !== 'CULMINADO').map(p => (
             <option key={p.id} value={p.id}>{p.nombre}</option>
           ))}
         </select>
@@ -196,6 +199,27 @@ export const PostulantesPage: React.FC = () => {
           color="green"
           description="Postulaciones aprobadas"
           onClick={() => setFiltroEstado('APROBADA')}
+        />
+        <StatCard
+          title="Docs. cargados"
+          value={stats.docsCargados}
+          color="blue"
+          description="Documentos completos"
+          onClick={() => setFiltroEstado('DOCUMENTOS_CARGADOS')}
+        />
+        <StatCard
+          title="Beneficiados"
+          value={stats.beneficiados}
+          color="purple"
+          description="Seleccionados en sorteo"
+          onClick={() => setFiltroEstado('BENEFICIADO')}
+        />
+        <StatCard
+          title="No beneficiarios"
+          value={stats.noBeneficiarios}
+          color="orange"
+          description="No seleccionados en sorteo"
+          onClick={() => setFiltroEstado('NO_BENEFICIARIO')}
         />
       </div>
 

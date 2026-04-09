@@ -1,4 +1,4 @@
-﻿/**
+/**
  * secciones-data.tsx
  *
  * Definicion de las secciones del formulario de Registro del Hogar.
@@ -7,7 +7,7 @@
  */
 import React from 'react';
 
-// ── Tipos ─────────────────────────────────────────────────────────────────── //
+// -- Tipos ------------------------------------------------------------------- //
 
 export interface CampoDefinicion {
   id: string;
@@ -42,7 +42,7 @@ export interface SeccionConfig {
   icon: React.ReactNode;
 }
 
-// ── Datos ─────────────────────────────────────────────────────────────────── //
+// -- Datos ------------------------------------------------------------------- //
 
 export const SECCIONES: SeccionConfig[] = [
   {
@@ -76,9 +76,9 @@ export const SECCIONES: SeccionConfig[] = [
         titulo: 'Ubicacion del predio',
         campos: [
           { id: 'tipo_predio',             label: 'Tipo de predio',             requeridoPorDefecto: true },
-          { id: 'comuna',                  label: 'Comuna',                     requeridoPorDefecto: false },
+          { id: 'comuna',                  label: 'Comuna',                     requeridoPorDefecto: true },
           { id: 'barrio_vereda',           label: 'Barrio / Vereda',            requeridoPorDefecto: true },
-          { id: 'observaciones_direccion', label: 'Observaciones de direccion', requeridoPorDefecto: false },
+          { id: 'observaciones_direccion', label: 'Observaciones de direccion', requeridoPorDefecto: true },
         ],
       },
       {
@@ -86,16 +86,16 @@ export const SECCIONES: SeccionConfig[] = [
         campos: [
           { id: 'estrato',                label: 'Estrato socioeconomico',  requeridoPorDefecto: true },
           { id: 'es_propietario',         label: 'Condicion de propietario', requeridoPorDefecto: true },
-          { id: 'numero_predial',         label: 'Numero predial',           requeridoPorDefecto: false },
-          { id: 'matricula_inmobiliaria', label: 'Matricula inmobiliaria',   requeridoPorDefecto: false },
-          { id: 'avaluo_catastral',       label: 'Avaluo catastral',         requeridoPorDefecto: false },
+          { id: 'numero_predial',         label: 'Numero predial',           requeridoPorDefecto: true },
+          { id: 'matricula_inmobiliaria', label: 'Matricula inmobiliaria',   requeridoPorDefecto: true },
+          { id: 'avaluo_catastral',       label: 'Avaluo catastral',         requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Servicios publicos',
         campos: [
-          { id: 'numero_matricula_agua',   label: 'No. matricula de agua',   requeridoPorDefecto: false },
-          { id: 'numero_contrato_energia', label: 'No. contrato de energia', requeridoPorDefecto: false },
+          { id: 'numero_matricula_agua',   label: 'No. matricula de agua',   requeridoPorDefecto: true },
+          { id: 'numero_contrato_energia', label: 'No. contrato de energia', requeridoPorDefecto: true },
         ],
       },
       {
@@ -103,7 +103,7 @@ export const SECCIONES: SeccionConfig[] = [
         campos: [
           { id: 'tiempo_residencia',               label: 'Tiempo de residencia',               requeridoPorDefecto: true },
           { id: 'tiene_dependientes',              label: 'Tiene dependientes',                 requeridoPorDefecto: true },
-          { id: 'personas_con_discapacidad_hogar', label: 'Personas con discapacidad en hogar', requeridoPorDefecto: false },
+          { id: 'personas_con_discapacidad_hogar', label: 'Personas con discapacidad en hogar', requeridoPorDefecto: true },
         ],
       },
     ],
@@ -139,14 +139,14 @@ export const SECCIONES: SeccionConfig[] = [
       {
         titulo: 'Datos personales',
         campos: [
-          { id: 'miembro_segundo_nombre',   label: 'Segundo nombre',   requeridoPorDefecto: false },
-          { id: 'miembro_segundo_apellido', label: 'Segundo apellido', requeridoPorDefecto: false },
+          { id: 'miembro_segundo_nombre',   label: 'Segundo nombre',   requeridoPorDefecto: true },
+          { id: 'miembro_segundo_apellido', label: 'Segundo apellido', requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Vinculo con el hogar',
         campos: [
-          { id: 'miembro_parentesco_otro', label: 'Otro parentesco',    requeridoPorDefecto: false },
+          { id: 'miembro_parentesco_otro', label: 'Otro parentesco',    requeridoPorDefecto: true },
           { id: 'miembro_es_cabeza_hogar', label: 'Es cabeza de hogar', requeridoPorDefecto: true },
         ],
       },
@@ -156,52 +156,52 @@ export const SECCIONES: SeccionConfig[] = [
           { id: 'miembro_nivel_educativo',    label: 'Nivel educativo',    requeridoPorDefecto: true },
           { id: 'miembro_situacion_laboral',  label: 'Situacion laboral',  requeridoPorDefecto: true },
           { id: 'miembro_ingresos_mensuales', label: 'Ingresos mensuales', requeridoPorDefecto: true },
-          { id: 'miembro_fuente_ingresos',    label: 'Fuente de ingresos', requeridoPorDefecto: false },
+          { id: 'miembro_fuente_ingresos',    label: 'Fuente de ingresos', requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Afiliacion SISBEN',
         campos: [
           { id: 'miembro_pertenece_sisben', label: 'Pertenece al SISBEN', requeridoPorDefecto: true },
-          { id: 'miembro_grupo_sisben',     label: 'Grupo SISBEN',        requeridoPorDefecto: false },
-          { id: 'miembro_puntaje_sisben',   label: 'Puntaje SISBEN',      requeridoPorDefecto: false },
+          { id: 'miembro_grupo_sisben',     label: 'Grupo SISBEN',        requeridoPorDefecto: true },
+          { id: 'miembro_puntaje_sisben',   label: 'Puntaje SISBEN',      requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Discapacidad',
         campos: [
-          { id: 'miembro_tiene_discapacidad',       label: 'Tiene discapacidad',          requeridoPorDefecto: false },
-          { id: 'miembro_grado_discapacidad',       label: 'Grado de discapacidad',       requeridoPorDefecto: false },
-          { id: 'miembro_certificado_discapacidad', label: 'Certificado de discapacidad', requeridoPorDefecto: false },
-          { id: 'miembro_numero_certificado',       label: 'Numero de certificado',       requeridoPorDefecto: false },
+          { id: 'miembro_tiene_discapacidad',       label: 'Tiene discapacidad',          requeridoPorDefecto: true },
+          { id: 'miembro_grado_discapacidad',       label: 'Grado de discapacidad',       requeridoPorDefecto: true },
+          { id: 'miembro_certificado_discapacidad', label: 'Certificado de discapacidad', requeridoPorDefecto: true },
+          { id: 'miembro_numero_certificado',       label: 'Numero de certificado',       requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Victima del conflicto',
         campos: [
-          { id: 'miembro_es_victima_conflicto',     label: 'Es victima del conflicto', requeridoPorDefecto: false },
-          { id: 'miembro_numero_ruv',               label: 'Numero RUV',               requeridoPorDefecto: false },
-          { id: 'miembro_hecho_victimizante',       label: 'Hecho victimizante',       requeridoPorDefecto: false },
-          { id: 'miembro_fecha_hecho_victimizante', label: 'Fecha del hecho',          requeridoPorDefecto: false },
+          { id: 'miembro_es_victima_conflicto',     label: 'Es victima del conflicto', requeridoPorDefecto: true },
+          { id: 'miembro_numero_ruv',               label: 'Numero RUV',               requeridoPorDefecto: true },
+          { id: 'miembro_hecho_victimizante',       label: 'Hecho victimizante',       requeridoPorDefecto: true },
+          { id: 'miembro_fecha_hecho_victimizante', label: 'Fecha del hecho',          requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Desplazamiento forzado',
         campos: [
-          { id: 'miembro_es_desplazado',          label: 'Es desplazado',            requeridoPorDefecto: false },
-          { id: 'miembro_fecha_desplazamiento',   label: 'Fecha de desplazamiento',  requeridoPorDefecto: false },
-          { id: 'miembro_municipio_origen',       label: 'Municipio de origen',      requeridoPorDefecto: false },
-          { id: 'miembro_departamento_origen',    label: 'Departamento de origen',   requeridoPorDefecto: false },
-          { id: 'miembro_motivo_desplazamiento',  label: 'Motivo de desplazamiento', requeridoPorDefecto: false },
+          { id: 'miembro_es_desplazado',          label: 'Es desplazado',            requeridoPorDefecto: true },
+          { id: 'miembro_fecha_desplazamiento',   label: 'Fecha de desplazamiento',  requeridoPorDefecto: true },
+          { id: 'miembro_municipio_origen',       label: 'Municipio de origen',      requeridoPorDefecto: true },
+          { id: 'miembro_departamento_origen',    label: 'Departamento de origen',   requeridoPorDefecto: true },
+          { id: 'miembro_motivo_desplazamiento',  label: 'Motivo de desplazamiento', requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Firmante de paz',
         campos: [
-          { id: 'miembro_es_firmante_paz',                label: 'Es firmante de paz',        requeridoPorDefecto: false },
-          { id: 'miembro_codigo_reincorporacion',         label: 'Codigo de reincorporacion', requeridoPorDefecto: false },
-          { id: 'miembro_etcr',                           label: 'ETCR',                      requeridoPorDefecto: false },
-          { id: 'miembro_estado_proceso_reincorporacion', label: 'Estado del proceso',        requeridoPorDefecto: false },
+          { id: 'miembro_es_firmante_paz',                label: 'Es firmante de paz',        requeridoPorDefecto: true },
+          { id: 'miembro_codigo_reincorporacion',         label: 'Codigo de reincorporacion', requeridoPorDefecto: true },
+          { id: 'miembro_etcr',                           label: 'ETCR',                      requeridoPorDefecto: true },
+          { id: 'miembro_estado_proceso_reincorporacion', label: 'Estado del proceso',        requeridoPorDefecto: true },
         ],
       },
     ],
@@ -233,27 +233,27 @@ export const SECCIONES: SeccionConfig[] = [
       {
         titulo: 'Documentos del hogar',
         campos: [
-          { id: 'doc_hogar_recibo_predial',                 label: 'Recibo predial',                      requeridoPorDefecto: false },
-          { id: 'doc_hogar_certificado_tradicion_libertad', label: 'Certificado de tradicion y libertad', requeridoPorDefecto: false },
-          { id: 'doc_hogar_escritura_publica_predio',       label: 'Escritura publica del predio',        requeridoPorDefecto: false },
-          { id: 'doc_hogar_recibo_servicios_publicos',      label: 'Recibo de servicios publicos',        requeridoPorDefecto: false },
-          { id: 'doc_hogar_declaracion_juramentada',        label: 'Declaracion juramentada',             requeridoPorDefecto: false },
-          { id: 'doc_hogar_certificado_residencia',         label: 'Certificado de residencia',           requeridoPorDefecto: false },
-          { id: 'doc_hogar_certificado_sisben',             label: 'Certificado SISBEN',                  requeridoPorDefecto: false },
-          { id: 'doc_hogar_certificado_discapacidad',       label: 'Certificado de discapacidad',         requeridoPorDefecto: false },
-          { id: 'doc_hogar_registro_victima',               label: 'Registro de victima (RUV)',           requeridoPorDefecto: false },
-          { id: 'doc_hogar_otro',                           label: 'Otro (libre)',                        requeridoPorDefecto: false },
+          { id: 'doc_hogar_recibo_predial',                 label: 'Recibo predial',                      requeridoPorDefecto: true },
+          { id: 'doc_hogar_certificado_tradicion_libertad', label: 'Certificado de tradicion y libertad', requeridoPorDefecto: true },
+          { id: 'doc_hogar_escritura_publica_predio',       label: 'Escritura publica del predio',        requeridoPorDefecto: true },
+          { id: 'doc_hogar_recibo_servicios_publicos',      label: 'Recibo de servicios publicos',        requeridoPorDefecto: true },
+          { id: 'doc_hogar_declaracion_juramentada',        label: 'Declaracion juramentada',             requeridoPorDefecto: true },
+          { id: 'doc_hogar_certificado_residencia',         label: 'Certificado de residencia',           requeridoPorDefecto: true },
+          { id: 'doc_hogar_certificado_sisben',             label: 'Certificado SISBEN',                  requeridoPorDefecto: true },
+          { id: 'doc_hogar_certificado_discapacidad',       label: 'Certificado de discapacidad',         requeridoPorDefecto: true },
+          { id: 'doc_hogar_registro_victima',               label: 'Registro de victima (RUV)',           requeridoPorDefecto: true },
+          { id: 'doc_hogar_otro',                           label: 'Otro (libre)',                        requeridoPorDefecto: true },
         ],
       },
       {
         titulo: 'Documentos por miembro',
         campos: [
-          { id: 'doc_miembro_cedula',                   label: 'Cedula de ciudadania',        requeridoPorDefecto: false },
-          { id: 'doc_miembro_registro_civil',           label: 'Registro civil',              requeridoPorDefecto: false },
-          { id: 'doc_miembro_tarjeta_identidad',        label: 'Tarjeta de identidad',        requeridoPorDefecto: false },
-          { id: 'doc_miembro_certificado_discapacidad', label: 'Certificado de discapacidad', requeridoPorDefecto: false },
-          { id: 'doc_miembro_certificado_victima',      label: 'Certificado de victima',      requeridoPorDefecto: false },
-          { id: 'doc_miembro_otro',                     label: 'Otro (libre)',                requeridoPorDefecto: false },
+          { id: 'doc_miembro_cedula',                   label: 'Cedula de ciudadania',        requeridoPorDefecto: true },
+          { id: 'doc_miembro_registro_civil',           label: 'Registro civil',              requeridoPorDefecto: true },
+          { id: 'doc_miembro_tarjeta_identidad',        label: 'Tarjeta de identidad',        requeridoPorDefecto: true },
+          { id: 'doc_miembro_certificado_discapacidad', label: 'Certificado de discapacidad', requeridoPorDefecto: true },
+          { id: 'doc_miembro_certificado_victima',      label: 'Certificado de victima',      requeridoPorDefecto: true },
+          { id: 'doc_miembro_otro',                     label: 'Otro (libre)',                requeridoPorDefecto: true },
         ],
       },
     ],
@@ -282,7 +282,7 @@ export const SECCIONES: SeccionConfig[] = [
   },
 ];
 
-// ── Config por defecto ─────────────────────────────────────────────────────── //
+// -- Config por defecto ------------------------------------------------------- //
 
 export function buildDefaultConfig(): Record<string, { requerido: boolean; habilitado: boolean }> {
   const config: Record<string, { requerido: boolean; habilitado: boolean }> = {};

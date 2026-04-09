@@ -6,20 +6,6 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 export const API_TIMEOUT = 10000;
 
-// Rutas
-export const ROUTES = {
-  HOME: '/',
-  LOGIN: '/login',
-  DASHBOARD: '/dashboard',
-  USUARIOS: '/usuarios',
-  USUARIOS_CREATE: '/usuarios/crear',
-  USUARIOS_EDIT: '/usuarios/:id/editar',
-  USUARIOS_DETAIL: '/usuarios/:id',
-  PROGRAMAS: '/programas',
-  AUDITORIA: '/auditoria',
-  NOT_FOUND: '*',
-};
-
 // Roles
 export const ROLE_NAMES: Record<number, string> = {
   1: 'ADMIN',

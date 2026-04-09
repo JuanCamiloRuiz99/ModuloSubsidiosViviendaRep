@@ -69,7 +69,7 @@ class CambiarEstadoProgramaDTO(BaseInputDTO):
     def validar(self) -> None:
         if not self.id_programa or self.id_programa <= 0:
             raise ValueError("El ID del programa es requerido")
-        estados_validos = ["BORRADOR", "ACTIVO", "INHABILITADO"]
+        estados_validos = ["BORRADOR", "ACTIVO", "INHABILITADO", "CULMINADO"]
         if self.nuevo_estado not in estados_validos:
             raise ValueError(
                 f"Estado inválido. Estados válidos: {', '.join(estados_validos)}"
@@ -105,7 +105,7 @@ class ListarProgramasDTO(BaseInputDTO):
             raise ValueError("La página debe ser mayor a 0")
         if self.tamaño_pagina < 1 or self.tamaño_pagina > 100:
             raise ValueError("El tamaño de página debe estar entre 1 y 100")
-        estados_validos = ["BORRADOR", "ACTIVO", "INHABILITADO"]
+        estados_validos = ["BORRADOR", "ACTIVO", "INHABILITADO", "CULMINADO"]
         if self.estado and self.estado not in estados_validos:
             raise ValueError(
                 f"Estado inválido. Estados válidos: {', '.join(estados_validos)}"

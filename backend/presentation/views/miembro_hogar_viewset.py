@@ -10,15 +10,16 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from infrastructure.database.models import MiembroHogar, DocumentoMiembroHogar
+from shared.file_validators import validate_uploaded_file
 
 
 class MiembroHogarViewSet(viewsets.GenericViewSet):
     """ViewSet para gestionar Miembros del Hogar."""
 
     queryset = MiembroHogar.objects.all()
-    permission_classes = [AllowAny]
 
-    @action(detail=True, methods=['post'], url_path='documentos')
+    @action(detail=True, methods=['post'], url_path='documentos',
+            permission_classes=[AllowAny])
     def documentos(self, request, pk=None):
         """
         Sube un documento adjunto a un miembro del hogar.
@@ -38,9 +39,18 @@ class MiembroHogarViewSet(viewsets.GenericViewSet):
                 {'detail': 'tipo_documento es requerido.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not archivo:
+
+        tipos_validos = {c[0] for c in DocumentoMiembroHogar.TIPO_CHOICES}
+        if tipo_documento not in tipos_validos:
             return Response(
-                {'detail': 'archivo es requerido.'},
+                {'detail': f'tipo_documento inválido. Valores permitidos: {sorted(tipos_validos)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_error = validate_uploaded_file(archivo)
+        if file_error:
+            return Response(
+                {'detail': file_error},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -147,6 +147,15 @@ class UsuarioSistema(models.Model):
         """Representación en texto"""
         return f"{self.nombre_completo} ({self.correo})"
 
+    @property
+    def is_authenticated(self):
+        """Required by DRF when used as request.user."""
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     def __repr__(self):
         """Representación para debugging"""
         return (

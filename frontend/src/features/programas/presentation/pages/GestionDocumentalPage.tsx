@@ -11,6 +11,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useProgramas } from '../hooks/useProgramas';
 import { usePostulantes, type PostulanteRow } from '../../../postulantes/presentation/hooks/use-postulantes';
+import { HeaderPanel } from '../../../../shared/presentation/components';
 
 // ── Helpers ───────────────────────────────────────────────────────────────── //
 
@@ -84,17 +85,10 @@ export const GestionDocumentalPage: React.FC = () => {
     <div className="max-w-5xl mx-auto flex flex-col gap-5 py-4">
 
       {/* ═══ Cabecera ═══ */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="flex-shrink-0 p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-        </button>
-        <div>
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Proceso interno</p>
-          <h1 className="text-xl font-extrabold text-gray-900 leading-tight">Gestión Documental Interna</h1>
-        </div>
-      </div>
+      <HeaderPanel
+        title="Gestión Documental Interna"
+        subtitle="Proceso interno — Carga y revisión de documentos por postulación"
+      />
 
       {/* ═══ Paso 1 — Selección del programa ═══ */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">

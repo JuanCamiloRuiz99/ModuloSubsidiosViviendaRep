@@ -7,6 +7,7 @@ Mantiene sólo la responsabilidad de serialización HTTP.
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from infrastructure.database.models import Programa, FormularioEtapa, ConfigRegistroHogar
 from infrastructure.database.repositories.programa_repository import DjangoProgramaRepository
@@ -36,6 +37,15 @@ class ProgramaViewSet(viewsets.ModelViewSet):
 
     queryset = Programa.objects.all()
     serializer_class = ProgramaSerializer
+
+    # list y retrieve son públicos (HomePage ciudadano).
+    # Mutaciones requieren autenticación (default settings).
+    PUBLIC_ACTIONS = {'list', 'retrieve'}
+
+    def get_permissions(self):
+        if self.action in self.PUBLIC_ACTIONS:
+            return [AllowAny()]
+        return [IsAuthenticated()]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

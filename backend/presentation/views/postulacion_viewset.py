@@ -9,6 +9,9 @@ Endpoints disponibles:
 """
 from django.conf import settings
 from django.core.files.storage import default_storage
+from django.db import transaction
+
+from shared.file_validators import validate_uploaded_file
 from django.db.models import Count, Q
 from django.http import FileResponse
 from django.utils import timezone
@@ -16,6 +19,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
 from infrastructure.database.models import (
     Programa,
@@ -30,6 +34,10 @@ from infrastructure.database.models import (
     Visita,
 )
 from infrastructure.database.usuarios_models import UsuarioSistema
+
+
+class ConsultaPublicaThrottle(AnonRateThrottle):
+    rate = '5/minute'
 
 
 TIPO_DOCUMENTO_LABELS = {
@@ -112,7 +120,6 @@ class PostulacionViewSet(viewsets.GenericViewSet):
     """ViewSet para gestionar Postulaciones."""
 
     queryset = Postulacion.objects.all()
-    permission_classes = [AllowAny]
 
     @action(detail=False, methods=['get'], url_path='registro-hogar')
     def lista_registro_hogar(self, request):
@@ -126,6 +133,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         qs = (
             GestionHogarEtapa1.objects
             .select_related('ciudadano', 'postulacion__programa', 'postulacion__funcionario_asignado', 'etapa__programa')
+            .prefetch_related('miembros')
             .annotate(total_miembros=Count('miembros'))
             .order_by('-fecha_radicado')
         )
@@ -165,6 +173,19 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                     'primer_apellido':      c.primer_apellido,
                     'segundo_apellido':     c.segundo_apellido or '',
                 }
+            else:
+                # Fallback: usar el miembro cabeza de hogar
+                cabeza = next((m for m in g.miembros.all() if m.es_cabeza_hogar), None)
+                if cabeza:
+                    ciudadano_data = {
+                        'tipo_documento':       cabeza.tipo_documento,
+                        'tipo_documento_label': TIPO_DOCUMENTO_LABELS.get(cabeza.tipo_documento, cabeza.tipo_documento),
+                        'numero_documento':     cabeza.numero_documento,
+                        'primer_nombre':        cabeza.primer_nombre,
+                        'segundo_nombre':       cabeza.segundo_nombre or '',
+                        'primer_apellido':      cabeza.primer_apellido,
+                        'segundo_apellido':     cabeza.segundo_apellido or '',
+                    }
 
             estado_val   = p.estado if p else 'EN_REVISION'
             programa_nom = ''
@@ -248,6 +269,27 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 'departamento_nacimiento': c.departamento_nacimiento or '',
                 'municipio_nacimiento':    c.municipio_nacimiento or '',
             }
+        else:
+            # Fallback: usar el miembro marcado como cabeza de hogar
+            cabeza = next((m for m in g.miembros.all() if m.es_cabeza_hogar), None)
+            if cabeza:
+                ciudadano_data = {
+                    'id_persona':            None,
+                    'tipo_documento':        cabeza.tipo_documento,
+                    'tipo_documento_label':  TIPO_DOCUMENTO_LABELS.get(cabeza.tipo_documento, cabeza.tipo_documento),
+                    'numero_documento':      cabeza.numero_documento,
+                    'primer_nombre':         cabeza.primer_nombre,
+                    'segundo_nombre':        cabeza.segundo_nombre or '',
+                    'primer_apellido':       cabeza.primer_apellido,
+                    'segundo_apellido':      cabeza.segundo_apellido or '',
+                    'fecha_nacimiento':      cabeza.fecha_nacimiento,
+                    'sexo':                  '',
+                    'nacionalidad':          '',
+                    'telefono':              '',
+                    'correo_electronico':    '',
+                    'departamento_nacimiento': '',
+                    'municipio_nacimiento':    '',
+                }
 
         miembros_data = []
         for m in g.miembros.all():
@@ -274,6 +316,9 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 'primer_apellido':   m.primer_apellido,
                 'segundo_apellido':  m.segundo_apellido or '',
                 'fecha_nacimiento':  m.fecha_nacimiento,
+                'sexo':              m.sexo if hasattr(m, 'sexo') else '',
+                'telefono':          m.telefono if hasattr(m, 'telefono') else '',
+                'correo_electronico': m.correo_electronico if hasattr(m, 'correo_electronico') else '',
                 'parentesco':        m.parentesco,
                 'es_cabeza_hogar':   m.es_cabeza_hogar,
                 'nivel_educativo':   m.nivel_educativo or '',
@@ -398,31 +443,46 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             campos_incorrectos = []
         observaciones = data.get('observaciones_revision', '')
 
-        # Solo persistimos revisión interna
-        g.campos_incorrectos     = campos_incorrectos
-        g.observaciones_revision = observaciones
-        g.save(update_fields=['campos_incorrectos', 'observaciones_revision'])
-
         # Ajuste de estado automático
-        if g.postulacion:
-            nuevo_estado = data.get('estado')
-            if nuevo_estado == 'RECHAZADA':
-                estado_final = 'RECHAZADA'
-            else:
-                estado_final = 'SUBSANACION' if campos_incorrectos else 'APROBADA'
+        nuevo_estado = data.get('estado')
+        if nuevo_estado == 'RECHAZADA':
+            estado_final = 'RECHAZADA'
+        else:
+            estado_final = 'SUBSANACION' if campos_incorrectos else 'APROBADA'
 
-            if estado_final not in dict(Postulacion.ESTADOS):
-                return Response(
-                    {'detail': f'Estado inválido: {estado_final}'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            g.postulacion.estado = estado_final
-            g.postulacion.save(update_fields=['estado'])
+        if estado_final not in dict(Postulacion.ESTADOS):
+            return Response(
+                {'detail': f'Estado inválido: {estado_final}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validar que la transición de estado sea legal
+        TRANSICIONES_PERMITIDAS = {
+            'EN_REVISION': {'APROBADA', 'SUBSANACION', 'RECHAZADA'},
+            'SUBSANACION': {'APROBADA', 'SUBSANACION', 'RECHAZADA'},
+        }
+        estado_actual = g.postulacion.estado if g.postulacion else None
+        permitidos = TRANSICIONES_PERMITIDAS.get(estado_actual, set())
+        if estado_final not in permitidos:
+            return Response(
+                {'detail': f'No se puede cambiar de "{estado_actual}" a "{estado_final}".'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        with transaction.atomic():
+            g.campos_incorrectos     = campos_incorrectos
+            g.observaciones_revision = observaciones
+            g.save(update_fields=['campos_incorrectos', 'observaciones_revision'])
+
+            if g.postulacion:
+                g.postulacion.estado = estado_final
+                g.postulacion.save(update_fields=['estado'])
 
         return Response({'detail': 'Actualizado correctamente.'})
 
 
-    @action(detail=True, methods=['post'], url_path='documentos-hogar')
+    @action(detail=True, methods=['post'], url_path='documentos-hogar',
+            permission_classes=[AllowAny])
     def documentos_hogar(self, request, pk=None):
         """
         Sube un documento adjunto al registro del hogar.
@@ -436,7 +496,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
 
         try:
             gestion = postulacion.gestion_hogar
-        except Exception:
+        except GestionHogarEtapa1.DoesNotExist:
             return Response(
                 {'detail': 'Esta postulación no tiene registro de hogar asociado.'},
                 status=status.HTTP_404_NOT_FOUND,
@@ -451,9 +511,18 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 {'detail': 'tipo_documento es requerido.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if not archivo:
+
+        tipos_validos = {c[0] for c in DocumentoGestionHogar.TIPO_CHOICES}
+        if tipo_documento not in tipos_validos:
             return Response(
-                {'detail': 'archivo es requerido.'},
+                {'detail': f'tipo_documento inválido. Valores permitidos: {sorted(tipos_validos)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        file_error = validate_uploaded_file(archivo)
+        if file_error:
+            return Response(
+                {'detail': file_error},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -528,43 +597,44 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Obtener postulaciones a distribuir (solo las NO asignadas)
-        qs = Postulacion.objects.filter(
-            activo_logico=True,
-            funcionario_asignado__isnull=True,
-        )
-        if postulacion_ids:
-            qs = qs.filter(id__in=postulacion_ids)
-
-        postulaciones = list(qs.order_by('id'))
-        total = len(postulaciones)
-
-        if total == 0:
-            return Response(
-                {'detail': 'No hay postulaciones disponibles para distribuir.'},
-                status=status.HTTP_400_BAD_REQUEST,
+        # Obtener postulaciones a distribuir con lock (evitar doble asignación)
+        with transaction.atomic():
+            qs = Postulacion.objects.select_for_update().filter(
+                activo_logico=True,
+                funcionario_asignado__isnull=True,
             )
+            if postulacion_ids:
+                qs = qs.filter(id__in=postulacion_ids)
 
-        # Distribución equitativa (round-robin)
-        asignaciones = {fid: [] for fid in funcionario_ids}
-        for idx, post in enumerate(postulaciones):
-            fid = funcionario_ids[idx % num_grupos]
-            asignaciones[fid].append(post.id)
+            postulaciones = list(qs.order_by('id'))
+            total = len(postulaciones)
 
-        # Actualizar en base de datos
-        total_asignadas = 0
-        resumen = []
-        func_map = {f.id_usuario: f.nombre_completo for f in funcionarios}
-        for fid, pids in asignaciones.items():
-            if pids:
-                Postulacion.objects.filter(id__in=pids).update(funcionario_asignado_id=fid)
-                total_asignadas += len(pids)
-            resumen.append({
-                'funcionario_id': fid,
-                'funcionario_nombre': func_map.get(fid, ''),
-                'cantidad': len(pids),
-                'postulacion_ids': pids,
-            })
+            if total == 0:
+                return Response(
+                    {'detail': 'No hay postulaciones disponibles para distribuir.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Distribución equitativa (round-robin)
+            asignaciones = {fid: [] for fid in funcionario_ids}
+            for idx, post in enumerate(postulaciones):
+                fid = funcionario_ids[idx % num_grupos]
+                asignaciones[fid].append(post.id)
+
+            # Actualizar en base de datos
+            total_asignadas = 0
+            resumen = []
+            func_map = {f.id_usuario: f.nombre_completo for f in funcionarios}
+            for fid, pids in asignaciones.items():
+                if pids:
+                    Postulacion.objects.filter(id__in=pids).update(funcionario_asignado_id=fid)
+                    total_asignadas += len(pids)
+                resumen.append({
+                    'funcionario_id': fid,
+                    'funcionario_nombre': func_map.get(fid, ''),
+                    'cantidad': len(pids),
+                    'postulacion_ids': pids,
+                })
 
         return Response({
             'total_distribuidas': total_asignadas,
@@ -820,10 +890,12 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 suffix = f'_{counter}' if counter and counter > 1 else ''
                 nombre_en_zip = f'{carpeta}/{tipo_doc}{suffix}{ext}'
                 zf.writestr(nombre_en_zip, f.read())
-        except Exception:
+        except (FileNotFoundError, OSError):
             pass
 
-    @action(detail=False, methods=['get'], url_path='consultar-estado')
+    @action(detail=False, methods=['get'], url_path='consultar-estado',
+            permission_classes=[AllowAny],
+            throttle_classes=[ConsultaPublicaThrottle])
     def consultar_estado(self, request):
         """
         Consulta pública del estado de postulación por número de documento.
@@ -849,7 +921,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
 
         if not miembros.exists():
             return Response(
-                {'detail': 'No se encontró una postulación asociada a este número de documento como cabeza de hogar.'},
+                {'detail': 'No se encontró una postulación asociada a este número de documento.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -1000,6 +1072,66 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             'no_beneficiarios': _build(no_beneficiarios, 'NO_BENEFICIARIO'),
         })
 
+    @action(detail=False, methods=['get'], url_path='sorteo/descargar')
+    def sorteo_descargar(self, request):
+        """
+        Descarga los resultados del sorteo como archivo CSV.
+        GET /api/postulaciones/sorteo/descargar/?programa_id=6
+        """
+        import csv
+        from django.http import HttpResponse
+
+        programa_id = request.query_params.get('programa_id')
+        if not programa_id:
+            return Response({'detail': 'Se requiere programa_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            programa_obj = Programa.objects.get(id=programa_id)
+        except Programa.DoesNotExist:
+            return Response({'detail': 'Programa no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        beneficiados = list(
+            Postulacion.objects.filter(programa_id=programa_id, estado='BENEFICIADO').order_by('id')
+        )
+        no_beneficiarios = list(
+            Postulacion.objects.filter(programa_id=programa_id, estado='NO_BENEFICIARIO').order_by('id')
+        )
+
+        if not beneficiados and not no_beneficiarios:
+            return Response({'detail': 'No se ha realizado un sorteo para este programa.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Sanitize program name for filename
+        nombre_seguro = programa_obj.nombre.replace(' ', '_').replace('/', '-')[:50]
+        filename = f"Resultados_Sorteo_{nombre_seguro}.csv"
+
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')  # BOM for Excel UTF-8
+
+        writer = csv.writer(response)
+        writer.writerow(['#', 'Nombre', 'Número de radicado', 'Estado'])
+
+        def _write_rows(postulaciones, estado_label):
+            for i, p in enumerate(postulaciones, 1):
+                hogar = (
+                    GestionHogarEtapa1.objects
+                    .filter(postulacion=p)
+                    .select_related('ciudadano')
+                    .first()
+                )
+                ciudadano = hogar.ciudadano if hogar else None
+                nombre = (
+                    f'{ciudadano.primer_nombre} {ciudadano.primer_apellido}'
+                    if ciudadano else f'Postulación #{p.id}'
+                )
+                radicado = hogar.numero_radicado if hogar else f'POST-{p.id}'
+                writer.writerow([i, nombre, radicado, estado_label])
+
+        _write_rows(beneficiados, 'Beneficiado')
+        _write_rows(no_beneficiarios, 'No beneficiario')
+
+        return response
+
     @action(detail=False, methods=['post'], url_path='sorteo/ejecutar')
     def sorteo_ejecutar(self, request):
         """
@@ -1007,7 +1139,8 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         POST /api/postulaciones/sorteo/ejecutar/
         Body: { "programa_id": 6, "cantidad_beneficiarios": 10 }
         """
-        import random
+        import random as _random_mod
+        rng = _random_mod.SystemRandom()
 
         programa_id = request.data.get('programa_id')
         cantidad = request.data.get('cantidad_beneficiarios')
@@ -1018,65 +1151,82 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        cantidad = int(cantidad)
+        try:
+            cantidad = int(cantidad)
+        except (TypeError, ValueError):
+            return Response(
+                {'detail': 'cantidad_beneficiarios debe ser un número entero.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if cantidad < 1:
             return Response(
                 {'detail': 'La cantidad de beneficiarios debe ser al menos 1.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Verificar que no se haya hecho sorteo antes
-        ya_sorteadas = Postulacion.objects.filter(
-            programa_id=programa_id, estado__in=['BENEFICIADO', 'NO_BENEFICIARIO'],
-        ).exists()
-        if ya_sorteadas:
-            return Response(
-                {'detail': 'Ya se realizó un sorteo para este programa. No se puede repetir.'},
-                status=status.HTTP_409_CONFLICT,
+        with transaction.atomic():
+            # Verificar que todas las etapas estén cerradas
+            etapas_abiertas = Etapa.objects.filter(programa_id=programa_id, finalizada=False).count()
+            if etapas_abiertas > 0:
+                return Response(
+                    {'detail': f'No se puede ejecutar el sorteo: hay {etapas_abiertas} etapa(s) sin finalizar. Todas las etapas deben estar cerradas.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Verificar que no se haya hecho sorteo antes (lock rows)
+            ya_sorteadas = (
+                Postulacion.objects
+                .select_for_update()
+                .filter(programa_id=programa_id, estado__in=['BENEFICIADO', 'NO_BENEFICIARIO'])
+                .exists()
+            )
+            if ya_sorteadas:
+                return Response(
+                    {'detail': 'Ya se realizó un sorteo para este programa. No se puede repetir.'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # Obtener elegibles con lock
+            elegibles = list(
+                Postulacion.objects
+                .select_for_update()
+                .filter(programa_id=programa_id, estado='DOCUMENTOS_CARGADOS')
+                .order_by('id')
             )
 
-        # Obtener elegibles
-        elegibles = list(
-            Postulacion.objects.filter(
-                programa_id=programa_id, estado='DOCUMENTOS_CARGADOS',
-            ).order_by('id')
-        )
+            if not elegibles:
+                return Response(
+                    {'detail': 'No hay postulaciones con documentos cargados para sortear.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if not elegibles:
-            return Response(
-                {'detail': 'No hay postulaciones con documentos cargados para sortear.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if cantidad > len(elegibles):
+                return Response(
+                    {'detail': f'La cantidad de beneficiarios ({cantidad}) supera el total de elegibles ({len(elegibles)}).'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if cantidad > len(elegibles):
-            return Response(
-                {'detail': f'La cantidad de beneficiarios ({cantidad}) supera el total de elegibles ({len(elegibles)}).'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # Sorteo aleatorio con CSPRNG
+            rng.shuffle(elegibles)
+            beneficiados = elegibles[:cantidad]
+            no_beneficiados = elegibles[cantidad:]
 
-        # Sorteo aleatorio
-        random.shuffle(elegibles)
-        beneficiados = elegibles[:cantidad]
-        no_beneficiados = elegibles[cantidad:]
+            ids_beneficiados = [p.id for p in beneficiados]
+            ids_no_beneficiados = [p.id for p in no_beneficiados]
 
-        # Actualizar estados
-        ids_beneficiados = [p.id for p in beneficiados]
-        ids_no_beneficiados = [p.id for p in no_beneficiados]
+            Postulacion.objects.filter(id__in=ids_beneficiados).update(estado='BENEFICIADO')
+            Postulacion.objects.filter(id__in=ids_no_beneficiados).update(estado='NO_BENEFICIARIO')
 
-        Postulacion.objects.filter(id__in=ids_beneficiados).update(estado='BENEFICIADO')
-        Postulacion.objects.filter(id__in=ids_no_beneficiados).update(estado='NO_BENEFICIARIO')
-
-        # Culminar el programa y finalizar todas sus etapas
-        try:
-            programa_obj = Programa.objects.get(id=programa_id)
-            programa_obj.estado = 'CULMINADO'
-            programa_obj.save(update_fields=['estado'])
-            Etapa.objects.filter(programa_id=programa_id, finalizada=False).update(
-                finalizada=True,
-                fecha_finalizacion=timezone.now(),
-            )
-        except Programa.DoesNotExist:
-            pass
+            try:
+                programa_obj = Programa.objects.get(id=programa_id)
+                programa_obj.estado = 'CULMINADO'
+                programa_obj.save(update_fields=['estado'])
+                Etapa.objects.filter(programa_id=programa_id, finalizada=False).update(
+                    finalizada=True,
+                    fecha_finalizacion=timezone.now(),
+                )
+            except Programa.DoesNotExist:
+                pass
 
         # Construir resultado con nombres
         def _build_result(postulaciones, estado_label):

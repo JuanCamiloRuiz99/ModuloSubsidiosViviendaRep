@@ -24,14 +24,7 @@
   },
   "include": ["src"],
   "exclude": [
-    "src/features/auditoria",
     "src/features/postulaciones",
-    "src/features/visitas",
-    "src/features/programas/domain/entities",
-    "src/features/programas/domain/ports",
-    "src/features/programas/domain/value-objects",
-    "src/features/programas/presentation/hooks/use-programa.ts",
-    "src/features/programas/presentation/hooks/use-programa-actions.ts",
-    "src/features/programas/presentation/hooks/use-programas.ts"
+    "src/features/visitas"
   ]
 }

@@ -1,0 +1,2 @@
+from .postulacion import Postulacion, EstadoPostulacion
+from .postulaciones_repository import PostulacionRepositoryInterface

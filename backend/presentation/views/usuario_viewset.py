@@ -13,16 +13,13 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import AnonRateThrottle
 
 from infrastructure.database.usuarios_models import UsuarioSistema
 from infrastructure.database.roles_models import Rol
 from presentation.serializers.usuario_serializers import (
     UsuarioSerializer,
-    CrearUsuarioSerializer,
-    ActualizarUsuarioSerializer,
-    CambiarContraseñaSerializer,
     CambiarRolSerializer,
-    ListarUsuariosSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,7 +44,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     queryset = UsuarioSistema.obtener_no_eliminados()
     serializer_class = UsuarioSerializer
-    permission_classes = [AllowAny]
 
     def _get_usuario(self, pk):
         """Helper para obtener usuario por ID"""
@@ -85,16 +81,21 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             user_serializer = UsuarioSerializer(usuarios, many=True)
             total_pages = (total + page_size - 1) // page_size
 
-            # Stats siempre desde TODOS los usuarios (no filtrados)
-            all_qs = UsuarioSistema.obtener_no_eliminados()
-            stats = {
-                "total": all_qs.count(),
-                "activos": all_qs.filter(activo=True).count(),
-                "inactivos": all_qs.filter(activo=False).count(),
-                "admins": all_qs.filter(id_rol__nombre_rol="ADMIN").count(),
-                "funcionarios": all_qs.filter(id_rol__nombre_rol="FUNCIONARIO").count(),
-                "tecnicos": all_qs.filter(id_rol__nombre_rol="TECNICO_VISITANTE").count(),
-            }
+            # Stats solo si el frontend las pide (evita 6 queries extra por defecto)
+            include_stats = request.query_params.get("include_stats", "true").lower() == "true"
+            stats = None
+            if include_stats:
+                all_qs = UsuarioSistema.obtener_no_eliminados()
+                total_all = all_qs.count()
+                activos_count = all_qs.filter(activo=True).count()
+                stats = {
+                    "total": total_all,
+                    "activos": activos_count,
+                    "inactivos": total_all - activos_count,
+                    "admins": all_qs.filter(id_rol__nombre_rol="ADMIN").count(),
+                    "funcionarios": all_qs.filter(id_rol__nombre_rol="FUNCIONARIO").count(),
+                    "tecnicos": all_qs.filter(id_rol__nombre_rol="TECNICO_VISITANTE").count(),
+                }
             
             return Response(
                 {
@@ -273,7 +274,10 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     rol_obj = Rol.objects.get(id_rol=int(id_rol))
                     usuario.id_rol = rol_obj
                 except Rol.DoesNotExist:
-                    pass
+                    return Response(
+                        {"success": False, "error": f"Rol con ID {id_rol} no existe"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
             # Actualizar estado/activo
             activo = data.get('activo')
@@ -315,13 +319,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 )
             
             usuario.activo_logico = False
+            usuario.activo = False
+            usuario.fecha_eliminacion = now()
             usuario.save()
-            logger.info(f"Usuario eliminado: {pk}")
+            logger.info(f"Usuario eliminado (soft): {pk}")
             
-            return Response(
-                {"success": True, "message": "Usuario eliminado"},
-                status=status.HTTP_204_NO_CONTENT,
-            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
         except Exception as e:
             logger.error(f"Error destroy: {str(e)}")
@@ -334,6 +337,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def cambiar_contraseña(self, request, pk=None) -> Response:
         """Cambiar contraseña"""
         try:
+            from django.contrib.auth.hashers import make_password
+
             usuario = self._get_usuario(pk)
             if not usuario:
                 return Response(
@@ -341,10 +346,14 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND,
                 )
             
-            serializer = CambiarContraseñaSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+            password = request.data.get("password", "").strip()
+            if not password or len(password) < 8:
+                return Response(
+                    {"success": False, "error": "La contraseña debe tener mínimo 8 caracteres"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-            usuario.password_hash = serializer.validated_data["password_hash"]
+            usuario.password_hash = make_password(password)
             usuario.save()
             logger.info(f"Contraseña cambiada: {pk}")
 
@@ -451,7 +460,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"],
+           permission_classes=[AllowAny],
+           throttle_classes=[AnonRateThrottle])
     def login(self, request) -> Response:
         """Autenticar usuario con correo y contraseña.
 
@@ -532,9 +543,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             inactivos = total - activos
 
             por_rol = {}
-            for rol_code, rol_name in UsuarioSistema.ROLES:
-                count = queryset.filter(rol=rol_code).count()
-                por_rol[rol_code] = count
+            for rol in Rol.objects.all():
+                count = queryset.filter(id_rol=rol).count()
+                por_rol[rol.nombre_rol] = count
 
             logger.info("Estadísticas generadas")
 

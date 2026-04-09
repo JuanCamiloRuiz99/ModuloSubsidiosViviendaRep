@@ -65,6 +65,9 @@ class MiembroHogarSubmitSerializer(serializers.Serializer):
     # Datos personales — opcionales
     segundo_nombre   = serializers.CharField(max_length=100, required=False, default='', allow_blank=True)
     segundo_apellido = serializers.CharField(max_length=100, required=False, default='', allow_blank=True)
+    sexo             = serializers.CharField(max_length=20, required=False, default='', allow_blank=True)
+    telefono         = serializers.CharField(max_length=20, required=False, default='', allow_blank=True)
+    correo_electronico = serializers.EmailField(max_length=150, required=False, default='', allow_blank=True)
 
     # Vínculo
     parentesco_otro = serializers.CharField(max_length=100, required=False, default='', allow_blank=True)
@@ -110,6 +113,22 @@ class MiembroHogarSubmitSerializer(serializers.Serializer):
     etcr                           = serializers.CharField(max_length=100, required=False, default='', allow_blank=True)
     estado_proceso_reincorporacion = serializers.CharField(max_length=100, required=False, default='', allow_blank=True)
 
+    # Campos que el frontend envía como '' cuando están vacíos pero el backend
+    # espera null (DecimalField / DateField no aceptan cadenas vacías).
+    _CAMPOS_NULOS = (
+        'ingresos_mensuales',
+        'puntaje_sisben',
+        'fecha_hecho_victimizante',
+        'fecha_desplazamiento',
+    )
+
+    def to_internal_value(self, data):
+        mutable = dict(data)
+        for campo in self._CAMPOS_NULOS:
+            if mutable.get(campo) == '':
+                mutable[campo] = None
+        return super().to_internal_value(mutable)
+
 
 class RegistroHogarSubmitSerializer(serializers.Serializer):
     """
@@ -122,5 +141,18 @@ class RegistroHogarSubmitSerializer(serializers.Serializer):
         if len(value) == 0:
             raise serializers.ValidationError(
                 'Debe registrar al menos un miembro del hogar.'
+            )
+        # Verificar números de documento duplicados dentro de la misma postulación.
+        numeros = [m['numero_documento'] for m in value]
+        vistos: set = set()
+        duplicados: set = set()
+        for n in numeros:
+            if n in vistos:
+                duplicados.add(n)
+            vistos.add(n)
+        if duplicados:
+            duplicados_str = ', '.join(sorted(duplicados))
+            raise serializers.ValidationError(
+                f'Los siguientes números de documento aparecen más de una vez en la postulación: {duplicados_str}.'
             )
         return value

@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { etapaRepository } from '../../infrastructure/persistence/axios-etapa-repository';
 import { etapasQueryKey } from '../hooks/useEtapas';
 import { useConfigCamposRegistroHogar } from '../hooks/useConfigCamposRegistroHogar';
@@ -39,6 +39,18 @@ export const RegistroHogarConfigPage: React.FC = () => {
     saveConfig,
     resetConfig,
   } = useConfigCamposRegistroHogar(etapaId);
+
+  const queryClient = useQueryClient();
+
+  const publicarMutation = useMutation({
+    mutationFn: () => etapaRepository.publicarRegistroHogar(Number(etapaId)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) }),
+  });
+
+  const inhabilitarMutation = useMutation({
+    mutationFn: () => etapaRepository.inhabilitarRegistroHogar(Number(etapaId)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: etapasQueryKey(programaId!) }),
+  });
 
 
 
@@ -110,7 +122,7 @@ export const RegistroHogarConfigPage: React.FC = () => {
             seccion={seccion}
             configCampos={configCampos}
             onConfigChange={updateCampo}
-            readOnly={isSaving}
+            readOnly={isSaving || isPublicado}
           />
         ))}
       </section>
@@ -150,6 +162,16 @@ export const RegistroHogarConfigPage: React.FC = () => {
               className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-40"
             >
               Descartar
+            </button>
+          )}
+          {isPublicado && (
+            <button
+              type="button"
+              disabled={inhabilitarMutation.isPending}
+              onClick={() => inhabilitarMutation.mutate()}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-sm font-semibold shadow-sm transition-colors"
+            >
+              {inhabilitarMutation.isPending ? 'Inhabilitando...' : 'Inhabilitar'}
             </button>
           )}
         </div>

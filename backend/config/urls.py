@@ -17,8 +17,8 @@ from presentation.views.postulacion_viewset import PostulacionViewSet
 from presentation.views.miembro_hogar_viewset import MiembroHogarViewSet
 from presentation.views.visita_etapa2_viewset import VisitaEtapa2ViewSet
 from presentation.views.visita_viewset import VisitaViewSet
-from presentation.views.llamada_viewset import LlamadaViewSet
 from presentation.views.documento_proceso_interno_viewset import DocumentoProcesoInternoViewSet
+from presentation.views.dashboard_view import dashboard_estadisticas
 
 router = DefaultRouter()
 router.register(r'programas',      ProgramaViewSet,      basename='programa')
@@ -28,12 +28,12 @@ router.register(r'postulaciones',  PostulacionViewSet,   basename='postulacion')
 router.register(r'miembros-hogar', MiembroHogarViewSet,  basename='miembro-hogar')
 router.register(r'visitas-etapa2', VisitaEtapa2ViewSet,  basename='visita-etapa2')
 router.register(r'visitas',        VisitaViewSet,        basename='visita')
-router.register(r'llamadas',       LlamadaViewSet,       basename='llamada')
 router.register(r'documentos-proceso-interno', DocumentoProcesoInternoViewSet, basename='documento-proceso-interno')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
+    path('api/dashboard/estadisticas/', dashboard_estadisticas, name='dashboard-estadisticas'),
 ]
 
 # Serve media files in development

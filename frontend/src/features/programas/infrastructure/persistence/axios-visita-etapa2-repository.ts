@@ -12,6 +12,8 @@ export interface VisitaEtapa2Item {
   etapa: number;
   encuestador: number;
   encuestador_nombre: string;
+  estado_visita: string;
+  fecha_programada: string | null;
   fecha_visita: string;
   visita_efectiva: boolean;
   motivo_no_efectiva: string | null;

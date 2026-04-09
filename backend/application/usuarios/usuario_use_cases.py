@@ -26,12 +26,12 @@ class CrearUsuarioUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self, input_dto: CrearUsuarioDTO) -> UsuarioDTO:
+    def execute(self, input_dto: CrearUsuarioDTO) -> UsuarioDTO:
         """Ejecuta la creación de un usuario"""
         input_dto.validar()
 
         # Verificar que el correo no exista
-        usuario_existente = await self.repository.obtener_por_correo(input_dto.correo)
+        usuario_existente = self.repository.obtener_por_correo(input_dto.correo)
         if usuario_existente:
             raise ValueError(f"El correo {input_dto.correo} ya está registrado")
 
@@ -47,7 +47,7 @@ class CrearUsuarioUseCase:
         )
 
         # Persistir
-        usuario_creado = await self.repository.crear(usuario)
+        usuario_creado = self.repository.crear(usuario)
         return UsuarioDTO.from_domain(usuario_creado)
 
 
@@ -57,11 +57,11 @@ class ObtenerUsuarioUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self, input_dto: ObtenerUsuarioDTO) -> UsuarioDTO:
+    def execute(self, input_dto: ObtenerUsuarioDTO) -> UsuarioDTO:
         """Ejecuta la obtención de un usuario"""
         input_dto.validar()
 
-        usuario = await self.repository.obtener_por_id(input_dto.id_usuario)
+        usuario = self.repository.obtener_por_id(input_dto.id_usuario)
         if not usuario:
             raise ValueError(f"Usuario con ID {input_dto.id_usuario} no encontrado")
 
@@ -74,7 +74,7 @@ class ListarUsuariosUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self, input_dto: ListarUsuariosDTO) -> ListaUsuariosDTO:
+    def execute(self, input_dto: ListarUsuariosDTO) -> ListaUsuariosDTO:
         """Ejecuta el listado de usuarios"""
         input_dto.validar()
 
@@ -84,7 +84,7 @@ class ListarUsuariosUseCase:
         if input_dto.activo is not None:
             filtros["activo"] = input_dto.activo
 
-        resultado = await self.repository.obtener_todos(
+        resultado = self.repository.obtener_todos(
             filtros=filtros,
             pagina=input_dto.pagina,
             tamaño_pagina=input_dto.tamaño_pagina,
@@ -113,11 +113,11 @@ class ActualizarUsuarioUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self, input_dto: ActualizarUsuarioDTO) -> UsuarioDTO:
+    def execute(self, input_dto: ActualizarUsuarioDTO) -> UsuarioDTO:
         """Ejecuta la actualización de un usuario"""
         input_dto.validar()
 
-        usuario = await self.repository.obtener_por_id(input_dto.id_usuario)
+        usuario = self.repository.obtener_por_id(input_dto.id_usuario)
         if not usuario:
             raise ValueError(f"Usuario con ID {input_dto.id_usuario} no encontrado")
 
@@ -132,7 +132,7 @@ class ActualizarUsuarioUseCase:
             usuario.usuario_modificacion = input_dto.usuario_modificacion
 
         # Persistir
-        usuario_actualizado = await self.repository.actualizar(usuario)
+        usuario_actualizado = self.repository.actualizar(usuario)
         return UsuarioDTO.from_domain(usuario_actualizado)
 
 
@@ -146,11 +146,11 @@ class CambiarRolUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self, input_dto: CambiarRolDTO) -> UsuarioDTO:
+    def execute(self, input_dto: CambiarRolDTO) -> UsuarioDTO:
         """Ejecuta el cambio de rol"""
         input_dto.validar()
 
-        usuario = await self.repository.obtener_por_id(input_dto.id_usuario)
+        usuario = self.repository.obtener_por_id(input_dto.id_usuario)
         if not usuario:
             raise ValueError(f"Usuario con ID {input_dto.id_usuario} no encontrado")
 
@@ -163,7 +163,7 @@ class CambiarRolUseCase:
         if input_dto.usuario_modificacion:
             usuario.usuario_modificacion = input_dto.usuario_modificacion
 
-        usuario_actualizado = await self.repository.actualizar(usuario)
+        usuario_actualizado = self.repository.actualizar(usuario)
         return UsuarioDTO.from_domain(usuario_actualizado)
 
 
@@ -173,11 +173,11 @@ class CambiarContraseñaUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self, input_dto: CambiarContraseñaDTO) -> UsuarioDTO:
+    def execute(self, input_dto: CambiarContraseñaDTO) -> UsuarioDTO:
         """Ejecuta el cambio de contraseña"""
         input_dto.validar()
 
-        usuario = await self.repository.obtener_por_id(input_dto.id_usuario)
+        usuario = self.repository.obtener_por_id(input_dto.id_usuario)
         if not usuario:
             raise ValueError(f"Usuario con ID {input_dto.id_usuario} no encontrado")
 
@@ -185,7 +185,7 @@ class CambiarContraseñaUseCase:
         if input_dto.usuario_modificacion:
             usuario.usuario_modificacion = input_dto.usuario_modificacion
 
-        usuario_actualizado = await self.repository.actualizar(usuario)
+        usuario_actualizado = self.repository.actualizar(usuario)
         return UsuarioDTO.from_domain(usuario_actualizado)
 
 
@@ -195,16 +195,16 @@ class EliminarUsuarioUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self, id_usuario: int) -> bool:
+    def execute(self, id_usuario: int) -> bool:
         """Ejecuta la eliminación de un usuario"""
         if not id_usuario or id_usuario <= 0:
             raise ValueError("ID de usuario inválido")
 
-        usuario = await self.repository.obtener_por_id(id_usuario)
+        usuario = self.repository.obtener_por_id(id_usuario)
         if not usuario:
             raise ValueError(f"Usuario con ID {id_usuario} no encontrado")
 
-        return await self.repository.eliminar(id_usuario)
+        return self.repository.eliminar(id_usuario)
 
 
 class ObtenerEstadisticasUsuariosUseCase:
@@ -213,11 +213,11 @@ class ObtenerEstadisticasUsuariosUseCase:
     def __init__(self, repository: UsuarioRepository):
         self.repository = repository
 
-    async def execute(self) -> EstadisticasUsuariosDTO:
+    def execute(self) -> EstadisticasUsuariosDTO:
         """Ejecuta la obtención de estadísticas"""
-        total = await self.repository.contar()
+        total = self.repository.contar()
 
-        usuarios_activos = await self.repository.obtener_todos(
+        usuarios_activos = self.repository.obtener_todos(
             filtros={"activo": True},
             pagina=1,
             tamaño_pagina=1000,
@@ -229,7 +229,7 @@ class ObtenerEstadisticasUsuariosUseCase:
         # Contar por rol
         por_rol = {}
         for rol in ["ADMIN", "FUNCIONARIO", "VISITADOR_TECNICO"]:
-            usuarios_rol = await self.repository.obtener_por_rol(rol)
+            usuarios_rol = self.repository.obtener_por_rol(rol)
             por_rol[rol] = len(usuarios_rol)
 
         return EstadisticasUsuariosDTO(

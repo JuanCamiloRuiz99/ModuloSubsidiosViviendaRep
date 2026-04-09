@@ -6,7 +6,7 @@
  * documentales con funcionalidad de subida y eliminación de archivos.
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useDocumentosProcesoInterno } from '../hooks/useDocumentosProcesoInterno';
 import {
@@ -68,15 +68,20 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
 
   // ── Upload modal state ──────────────────────────────────────────────── //
   const [uploadTipo, setUploadTipo] = useState<TipoDocumentoProcesoInterno | null>(null);
-  const [uploadRadSol, setUploadRadSol] = useState('');
-  const [uploadRadResp, setUploadRadResp] = useState('');
   const [uploadObs, setUploadObs] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Mensaje de estado ───────────────────────────────────────────────── //
+  const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
+
+  useEffect(() => {
+    if (!mensaje) return;
+    const t = setTimeout(() => setMensaje(null), 4000);
+    return () => clearTimeout(t);
+  }, [mensaje]);
+
   const openUpload = useCallback((tipo: TipoDocumentoProcesoInterno) => {
     setUploadTipo(tipo);
-    setUploadRadSol('');
-    setUploadRadResp('');
     setUploadObs('');
   }, []);
 
@@ -89,11 +94,24 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
       postulacion: postulacionIdNum,
       tipo_documento: uploadTipo,
       archivo: file,
-      numero_radicado_orfeo_solicitud: uploadRadSol,
-      numero_radicado_orfeo_respuesta: uploadRadResp,
       observaciones: uploadObs,
-    }, { onSuccess: () => closeUpload() });
-  }, [uploadTipo, postulacionIdNum, uploadRadSol, uploadRadResp, uploadObs, subir, closeUpload]);
+    }, {
+      onSuccess: () => {
+        closeUpload();
+        // Check completeness after upload (docs list will re-fetch, but we can estimate)
+        const tiposCargadosActuales = new Set(documentos.map(d => d.tipo_documento));
+        tiposCargadosActuales.add(uploadTipo);
+        if (tiposCargadosActuales.size >= TOTAL_TIPOS) {
+          setMensaje({ tipo: 'exito', texto: 'Documentos cargados exitosamente' });
+        } else {
+          setMensaje({ tipo: 'error', texto: `Documentos incompletos — faltan ${TOTAL_TIPOS - tiposCargadosActuales.size} documentos por cargar` });
+        }
+      },
+      onError: () => {
+        setMensaje({ tipo: 'error', texto: 'Error al subir el documento. Intente nuevamente.' });
+      },
+    });
+  }, [uploadTipo, postulacionIdNum, uploadObs, subir, closeUpload, documentos]);
 
   // ── Confirmación de eliminación ─────────────────────────────────────── //
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
@@ -219,12 +237,6 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         <span className="truncate text-gray-700 font-medium flex-1">{doc.nombre_archivo}</span>
-                                        {doc.numero_radicado_orfeo_solicitud && (
-                                          <span className="text-gray-400">Sol: {doc.numero_radicado_orfeo_solicitud}</span>
-                                        )}
-                                        {doc.numero_radicado_orfeo_respuesta && (
-                                          <span className="text-gray-400">Rta: {doc.numero_radicado_orfeo_respuesta}</span>
-                                        )}
                                         <button
                                           onClick={() => setDeleteDocId(doc.id)}
                                           className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0"
@@ -265,7 +277,27 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
 
       {/* ═══ Barra inferior: Guardar ═══ */}
       {!loadingDocs && (
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] rounded-t-xl px-5 py-4 flex items-center justify-between -mx-0">
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] rounded-t-xl px-5 py-4 flex flex-col gap-3 -mx-0">
+          {/* Mensaje de estado */}
+          {mensaje && (
+            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium ${
+              mensaje.tipo === 'exito'
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}>
+              {mensaje.tipo === 'exito' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              )}
+              {mensaje.texto}
+            </div>
+          )}
+          <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -283,6 +315,7 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
             </svg>
             Guardar
           </button>
+          </div>
         </div>
       )}
 
@@ -298,27 +331,6 @@ export const GestionDocumentosPostulacionPage: React.FC = () => {
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Archivo *</label>
               <input ref={fileInputRef} type="file" className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Radicado Orfeo solicitud</label>
-                <input
-                  value={uploadRadSol}
-                  onChange={e => setUploadRadSol(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none"
-                  placeholder="Ej: 2024-0012345"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Radicado Orfeo respuesta</label>
-                <input
-                  value={uploadRadResp}
-                  onChange={e => setUploadRadResp(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 focus:border-purple-400 outline-none"
-                  placeholder="Ej: 2024-0012346"
-                />
-              </div>
             </div>
 
             <div>
