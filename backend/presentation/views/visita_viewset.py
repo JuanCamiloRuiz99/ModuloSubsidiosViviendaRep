@@ -127,16 +127,16 @@ class VisitaViewSet(viewsets.ViewSet):
             etapa=etapa,
             encuestador=encuestador,
             tipo_visita=tipo_visita,
-            estado_visita='PROGRAMADA',
+            estado_visita='ASIGNADA',
             direccion=direccion,
-            fecha_programada=fecha_programada or now(),
-            fecha_visita=fecha_programada or now(),
+            fecha_programada=None,
+            fecha_visita=None,
             id_encuestador_creacion=encuestador,
         )
 
-        # Actualizar estado de la postulación a VISITA_PROGRAMADA
-        if postulacion.estado in ('VISITA_PENDIENTE', 'EN_REVISION'):
-            postulacion.estado = 'VISITA_PROGRAMADA'
+        # Actualizar estado de la postulación a VISITA_ASIGNADA
+        if postulacion.estado in ('VISITA_PENDIENTE', 'EN_REVISION', 'APROBADA'):
+            postulacion.estado = 'VISITA_ASIGNADA'
             postulacion.fecha_modificacion = now()
             postulacion.save(update_fields=['estado', 'fecha_modificacion'])
 
@@ -145,6 +145,94 @@ class VisitaViewSet(viewsets.ViewSet):
         visita.postulacion = postulacion  # keep select_related data
 
         return Response(_visita_to_ddd(visita), status=status.HTTP_201_CREATED)
+
+    # ── Reasignar visitante ──────────────────────────────────────────────── #
+
+    @action(detail=False, methods=['post'], url_path='reasignar')
+    def reasignar(self, request):
+        """Reasigna el visitante (encuestador) de la visita activa de una postulación."""
+        postulacion_id = request.data.get('postulacionId')
+        nuevo_inspector_id = request.data.get('inspectorId')
+
+        if not postulacion_id or not nuevo_inspector_id:
+            return Response(
+                {'detail': 'postulacionId e inspectorId son requeridos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        visita = Visita.objects.filter(
+            postulacion_id=postulacion_id,
+            activo_logico=True,
+        ).exclude(estado_visita='CANCELADA').order_by('-fecha_registro').first()
+
+        if not visita:
+            return Response(
+                {'detail': 'No hay visita activa para esta postulación.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            nuevo_encuestador = UsuarioSistema.objects.get(pk=nuevo_inspector_id)
+        except UsuarioSistema.DoesNotExist:
+            return Response(
+                {'detail': f'Inspector {nuevo_inspector_id} no encontrado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        visita.encuestador = nuevo_encuestador
+        visita.fecha_modificacion = now()
+        visita.save(update_fields=['encuestador', 'fecha_modificacion'])
+
+        visita.refresh_from_db()
+        return Response(_visita_to_ddd(visita))
+
+    # ── Programar visita (técnico asigna fecha) ──────────────────────────── #
+
+    @action(detail=False, methods=['post'], url_path='programar')
+    def programar(self, request):
+        """El técnico programa la fecha de una visita asignada."""
+        visita_id = request.data.get('visitaId')
+        fecha_programada = request.data.get('fechaProgramada')
+
+        if not visita_id or not fecha_programada:
+            return Response(
+                {'detail': 'visitaId y fechaProgramada son requeridos.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            visita = Visita.objects.select_related(
+                'postulacion', 'postulacion__programa', 'encuestador',
+            ).get(pk=visita_id, activo_logico=True)
+        except Visita.DoesNotExist:
+            return Response(
+                {'detail': 'Visita no encontrada.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if visita.estado_visita not in ('ASIGNADA', 'PROGRAMADA'):
+            return Response(
+                {'detail': f'No se puede programar una visita en estado {visita.estado_visita}.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        visita.fecha_programada = fecha_programada
+        visita.fecha_visita = fecha_programada
+        visita.estado_visita = 'PROGRAMADA'
+        visita.fecha_modificacion = now()
+        visita.save(update_fields=[
+            'fecha_programada', 'fecha_visita', 'estado_visita', 'fecha_modificacion',
+        ])
+
+        # Actualizar estado de la postulación a VISITA_PROGRAMADA
+        postulacion = visita.postulacion
+        if postulacion.estado in ('VISITA_ASIGNADA', 'VISITA_PENDIENTE'):
+            postulacion.estado = 'VISITA_PROGRAMADA'
+            postulacion.fecha_modificacion = now()
+            postulacion.save(update_fields=['estado', 'fecha_modificacion'])
+
+        visita.refresh_from_db()
+        return Response(_visita_to_ddd(visita))
 
     # ── Listar ─────────────────────────────────────────────────────────────── #
 

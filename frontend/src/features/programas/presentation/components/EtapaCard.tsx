@@ -16,9 +16,9 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
   const navigate = useNavigate();
   const cfg = MODULO_CONFIG[etapa.modulo_principal] ?? MODULO_CONFIG.REGISTRO_HOGAR;
   const isConfigurado =
-    etapa.modulo_principal === 'REGISTRO_HOGAR' ||
-    etapa.modulo_principal === 'VISITA_TECNICA' ||
-    etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ||
+    (etapa.modulo_principal === 'REGISTRO_HOGAR' && etapa.registro_hogar_guardado) ||
+    (etapa.modulo_principal === 'VISITA_TECNICA' && etapa.visita_tecnica_guardado) ||
+    (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' && etapa.gestion_documental_guardado) ||
     etapa.formulario_configurado;
   const isPublicado =
     etapa.formulario_estado === 'PUBLICADO' ||

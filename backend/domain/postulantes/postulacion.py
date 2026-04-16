@@ -19,6 +19,7 @@ class EstadoPostulacion(str, Enum):
     EN_REVISION = 'EN_REVISION'
     SUBSANACION = 'SUBSANACION'
     VISITA_PENDIENTE = 'VISITA_PENDIENTE'
+    VISITA_ASIGNADA = 'VISITA_ASIGNADA'
     VISITA_PROGRAMADA = 'VISITA_PROGRAMADA'
     VISITA_REALIZADA = 'VISITA_REALIZADA'
     DOCUMENTOS_INCOMPLETOS = 'DOCUMENTOS_INCOMPLETOS'
@@ -39,7 +40,13 @@ TRANSICIONES_VALIDAS: dict[EstadoPostulacion, list[EstadoPostulacion]] = {
     ],
     EstadoPostulacion.SUBSANACION: [EstadoPostulacion.EN_REVISION],
     EstadoPostulacion.VISITA_PENDIENTE: [
+        EstadoPostulacion.VISITA_ASIGNADA,
         EstadoPostulacion.VISITA_PROGRAMADA,
+        EstadoPostulacion.VISITA_REALIZADA,
+    ],
+    EstadoPostulacion.VISITA_ASIGNADA: [
+        EstadoPostulacion.VISITA_PROGRAMADA,
+        EstadoPostulacion.VISITA_PENDIENTE,
         EstadoPostulacion.VISITA_REALIZADA,
     ],
     EstadoPostulacion.VISITA_PROGRAMADA: [

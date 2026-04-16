@@ -552,6 +552,7 @@ const ESTADO_COLORS: Record<string, string> = {
   EN_REVISION:         'bg-yellow-100 text-yellow-800',
   SUBSANACION:         'bg-orange-100 text-orange-800',
   VISITA_PENDIENTE:    'bg-purple-100 text-purple-800',
+  VISITA_ASIGNADA:     'bg-sky-100 text-sky-800',
   VISITA_PROGRAMADA:   'bg-blue-100 text-blue-800',
   VISITA_REALIZADA:        'bg-indigo-100 text-indigo-800',
   DOCUMENTOS_INCOMPLETOS:  'bg-teal-100 text-teal-800',

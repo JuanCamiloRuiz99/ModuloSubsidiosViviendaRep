@@ -11,7 +11,7 @@ export class CrearVisitaDTO {
     public programaId: string,
     public tipoVisita: string,
     public direccion: string,
-    public fechaProgramada: Date,
+    public fechaProgramada?: Date,
     public inspectorId?: string
   ) {
     this.validate();

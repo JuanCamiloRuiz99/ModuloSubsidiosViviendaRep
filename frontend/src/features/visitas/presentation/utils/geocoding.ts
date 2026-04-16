@@ -25,6 +25,8 @@ export interface GeocodedMarker {
   programa: string;
   postulanteId: string;
   postulacionId: string;
+  /** true si se obtuvo coordenada real, false si es fallback */
+  geocoded: boolean;
 }
 
 interface CachedCoord {
@@ -198,22 +200,21 @@ export async function geocodeBatch(
       }
     }
 
-    if (coord) {
-      results.push({
-        id: p.id,
-        lat: coord.lat,
-        lng: coord.lng,
-        radicado: p.numero_radicado,
-        solicitante: nombreCompleto(p),
-        direccion: p.direccion,
-        municipio: p.municipio,
-        departamento: p.departamento,
-        zona: p.zona_label ?? p.zona,
-        programa: p.programa_nombre ?? '—',
-        postulanteId: String(p.id),
-        postulacionId: p.id_postulacion != null ? String(p.id_postulacion) : String(p.id),
-      });
-    }
+    results.push({
+      id: p.id,
+      lat: coord?.lat ?? 0,
+      lng: coord?.lng ?? 0,
+      radicado: p.numero_radicado,
+      solicitante: nombreCompleto(p),
+      direccion: p.direccion,
+      municipio: p.municipio,
+      departamento: p.departamento,
+      zona: p.zona_label ?? p.zona,
+      programa: p.programa_nombre ?? '—',
+      postulanteId: String(p.id),
+      postulacionId: p.id_postulacion != null ? String(p.id_postulacion) : String(p.id),
+      geocoded: !!coord,
+    });
 
     onProgress({ done: i + 1, total: postulantes.length, cached: cachedCount });
   }

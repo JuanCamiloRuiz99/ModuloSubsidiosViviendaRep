@@ -172,7 +172,9 @@ export const VisitasPage: React.FC = () => {
     refs.layerGroup.clearLayers();
     leafletMarkersRef.current.clear();
 
-    for (const m of markers) {
+    const geocodedMarkers = markers.filter(m => m.geocoded);
+
+    for (const m of geocodedMarkers) {
       const icon = m.id === selectedId ? SELECTED_ICON : DEFAULT_ICON;
       const marker = L.marker([m.lat, m.lng], { icon })
         .bindPopup(buildPopupHtml({
@@ -189,7 +191,7 @@ export const VisitasPage: React.FC = () => {
       leafletMarkersRef.current.set(m.id, marker);
     }
 
-    fitBoundsToPoints(refs.map, markers, 15);
+    fitBoundsToPoints(refs.map, geocodedMarkers, 15);
   }, [markers, selectedId, activeTab]);
 
   // Volar al marcador seleccionado
@@ -213,14 +215,35 @@ export const VisitasPage: React.FC = () => {
 
   const recalculate = useCallback(() => {
     if (!markers.length) { setClusters([]); return; }
-    const k = Math.min(numClusters, markers.length);
-    const result = kmeans(markers, k);
+
+    const geocoded = markers.filter(m => m.geocoded);
+    const noGeocoded = markers.filter(m => !m.geocoded);
+
+    if (!geocoded.length) {
+      // Ninguno geocodificado → un solo grupo con todos
+      setClusters([{
+        index: 0,
+        color: CLUSTER_COLORS[0],
+        markers: [...noGeocoded],
+        tecnicoId: tecnicoAssignments[0] ?? null,
+      }]);
+      return;
+    }
+
+    const k = Math.min(numClusters, geocoded.length);
+    const result = kmeans(geocoded, k);
     const groups: ClusterGroup[] = result.groups.map((items, i) => ({
       index: i,
       color: CLUSTER_COLORS[i % CLUSTER_COLORS.length],
-      markers: items as GeocodedMarker[],
+      markers: [...(items as GeocodedMarker[])],
       tecnicoId: tecnicoAssignments[i] ?? null,
     }));
+
+    // Distribuir no-geocodificados equitativamente (round-robin)
+    noGeocoded.forEach((m, i) => {
+      groups[i % groups.length].markers.push(m);
+    });
+
     setClusters(groups);
   }, [markers, numClusters, tecnicoAssignments]);
 
@@ -250,7 +273,7 @@ export const VisitasPage: React.FC = () => {
       const isAssigned = !!cluster.tecnicoId;
       const markerColor = isAssigned ? ASSIGNED_COLOR : cluster.color;
       const icon = getMarkerIcon(markerColor);
-      for (const m of cluster.markers) {
+      for (const m of cluster.markers.filter(mk => mk.geocoded)) {
         allPts.push({ lat: m.lat, lng: m.lng });
         const tec = cluster.tecnicoId
           ? tecnicos.find((t: any) => String(t.id) === cluster.tecnicoId)
@@ -307,7 +330,7 @@ export const VisitasPage: React.FC = () => {
               selectedProgramaId,
               'INICIAL',
               m.direccion,
-              new Date(),
+              undefined,
               group.tecnicoId ?? undefined,
             ),
           );
@@ -326,16 +349,23 @@ export const VisitasPage: React.FC = () => {
     setCreatingVisitas(false);
     setCreateResult({ ok, fail, dup });
 
-    // Refrescar postulantes para que los ya asignados desaparezcan del mapa
-    if (ok > 0) refetch();
+    // Limpiar grupos y refrescar: los asignados (ok) ya no son APROBADA,
+    // y los duplicados (dup) ya tenían visita → no deben seguir visibles.
+    if (ok > 0 || dup > 0) {
+      setTecnicoAssignments({});
+      setClusters([]);
+      setExpandedGroup(null);
+      setSelectedGroupForAssign(null);
+      refetch();
+    }
   }, [clusters, crearVisitaMutation, selectedProgramaId, refetch]);
 
   // ── Derivados ──
   const totalAprobadas  = postulantes.length;
-  const totalUbicadas   = markers.length;
-  const totalNoUbicadas = Math.max(0, geoProgress.done - totalUbicadas);
+  const totalUbicadas   = markers.filter(m => m.geocoded).length;
+  const totalNoUbicadas = markers.filter(m => !m.geocoded).length;
   const asignadas       = clusters.filter(c => c.tecnicoId).reduce((s, c) => s + c.markers.length, 0);
-  const maxClusters     = Math.max(1, Math.min(totalUbicadas, 15));
+  const maxClusters     = Math.max(1, Math.min(totalUbicadas || 1, 15));
 
   // ══════════════════════════════════════════════════════════════════════════ //
 

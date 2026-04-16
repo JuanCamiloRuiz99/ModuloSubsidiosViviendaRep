@@ -13,7 +13,7 @@ export class VisitaDTO {
     public tipoVisita: string,
     public estado: string,
     public direccion: string,
-    public fechaProgramada: Date,
+    public fechaProgramada?: Date,
     public inspectorId?: string,
     public observaciones?: string,
     public fotosUrl?: string,

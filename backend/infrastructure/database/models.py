@@ -645,6 +645,7 @@ class Postulacion(models.Model):
         ('EN_REVISION',         'En revisión'),
         ('SUBSANACION',         'Subsanación'),
         ('VISITA_PENDIENTE',    'Visita pendiente'),
+        ('VISITA_ASIGNADA',     'Visita asignada'),
         ('VISITA_PROGRAMADA',   'Visita programada'),
         ('VISITA_REALIZADA',       'Visita realizada'),
         ('DOCUMENTOS_INCOMPLETOS', 'Documentos incompletos'),
@@ -735,6 +736,7 @@ class Visita(models.Model):
     ]
 
     ESTADO_VISITA_CHOICES = [
+        ('ASIGNADA',    'Asignada'),
         ('PROGRAMADA',  'Programada'),
         ('REALIZANDO',  'Realizando'),
         ('COMPLETADA',  'Completada'),

@@ -427,7 +427,7 @@ class EtapaViewSet(viewsets.ModelViewSet):
             postulacion = Postulacion.objects.create(
                 programa=etapa.programa,
                 etapa_actual=etapa,
-                estado='EN_REVISION',
+                estado='REGISTRADA',
             )
 
             # ── 2. Generar numero_radicado único ──────────────────────────── #

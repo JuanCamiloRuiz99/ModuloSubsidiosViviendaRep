@@ -24,7 +24,7 @@ export const PostulantesListPanel: React.FC<Props> = React.memo(({
 }) => {
   const [busqueda, setBusqueda] = useState('');
 
-  const markerIds = useMemo(() => new Set(markers.map(m => m.id)), [markers]);
+  const markerMap = useMemo(() => new Map(markers.map(m => [m.id, m.geocoded])), [markers]);
 
   const filtered = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
@@ -75,7 +75,7 @@ export const PostulantesListPanel: React.FC<Props> = React.memo(({
 
         {filtered.map(row => {
           const isActive = row.id === selectedId;
-          const hasMarker = markerIds.has(row.id);
+          const hasMarker = markerMap.get(row.id) === true;
           return (
             <button
               key={row.id}

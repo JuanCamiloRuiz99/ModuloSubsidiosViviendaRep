@@ -97,6 +97,7 @@ export interface PostulanteRow {
   direccion:       string;
   total_miembros:  number;
   visita_id:       number | null;
+  visitante_asignado: { id: number; nombre: string } | null;
   funcionario_asignado: { id: number; nombre: string } | null;
 }
 

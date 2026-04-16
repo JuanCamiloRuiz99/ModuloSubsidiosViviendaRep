@@ -207,9 +207,8 @@ const ResumenCard: React.FC<{
   documentosHogar: DocumentoHogarEntry[];
 }> = ({ infoHogar, miembros, documentosHogar }) => {
   const docsConArchivo = documentosHogar.filter(d => d.file !== null).length;
-  const docsRequeridos = TIPOS_DOCUMENTO_HOGAR.filter(t => t.requerido).length;
+  const docsRequeridos = TIPOS_DOCUMENTO_HOGAR.length;
   const docsRequeridosCargados = TIPOS_DOCUMENTO_HOGAR
-    .filter(t => t.requerido)
     .filter(t => documentosHogar.find(d => d.tipo_documento === t.value)?.file !== null)
     .length;
   const docsOkMiembros = miembros.reduce((acc, m) => acc + m.documentos.filter(d => d.file !== null).length, 0);
@@ -497,6 +496,7 @@ export const RegistroHogarPage: React.FC = () => {
                   onChangeDocHogar={setDocumentosHogar}
                   miembros={miembros}
                   onChangeDocMiembro={handleDocMiembro}
+                  esPropietario={infoHogar.es_propietario}
                 />
                 {erroresPaso3 && (
                   <div className="mx-0 mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">

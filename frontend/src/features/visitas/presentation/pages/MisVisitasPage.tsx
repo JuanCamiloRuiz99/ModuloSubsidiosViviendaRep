@@ -17,7 +17,8 @@ type FiltroEstado = 'TODAS' | EstadoVisita;
 type VistaActiva = 'asignadas' | 'porProgramar';
 
 const ESTADO_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  PROGRAMADA:  { label: 'Visita Pendiente',  bg: 'bg-blue-100',   text: 'text-blue-700' },
+  ASIGNADA:    { label: 'Por programar',    bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  PROGRAMADA:  { label: 'Visita Programada', bg: 'bg-blue-100',   text: 'text-blue-700' },
   REALIZANDO:  { label: 'En curso',          bg: 'bg-amber-100',  text: 'text-amber-700' },
   COMPLETADA:  { label: 'Visita Realizada',  bg: 'bg-green-100',  text: 'text-green-700' },
   CANCELADA:   { label: 'Cancelada',         bg: 'bg-red-100',    text: 'text-red-700' },
@@ -25,9 +26,10 @@ const ESTADO_CONFIG: Record<string, { label: string; bg: string; text: string }>
 
 const FILTROS: { value: FiltroEstado; label: string }[] = [
   { value: 'TODAS',       label: 'Todas' },
-  { value: EstadoVisita.PROGRAMADA,  label: 'Visita Pendiente' },
+  { value: EstadoVisita.ASIGNADA,    label: 'Por programar' },
+  { value: EstadoVisita.PROGRAMADA,  label: 'Programadas' },
   { value: EstadoVisita.REALIZANDO,  label: 'En curso' },
-  { value: EstadoVisita.COMPLETADA,  label: 'Visita Realizada' },
+  { value: EstadoVisita.COMPLETADA,  label: 'Realizadas' },
   { value: EstadoVisita.CANCELADA,   label: 'Canceladas' },
 ];
 
@@ -56,6 +58,8 @@ export default function MisVisitasPage() {
 
   // Fecha por programar (por postulación)
   const [fechasPorProgramar, setFechasPorProgramar] = useState<Record<number, string>>({});
+  // Fecha por programar para visitas ASIGNADAS (por visitaId)
+  const [fechasVisitaProgramar, setFechasVisitaProgramar] = useState<Record<string, string>>({});
 
   const { programas, isLoading: loadingProgramas } = useProgramas({ pageSize: 100 });
   const { visitas, isLoading, error, refetch } = useMisVisitas(selectedProgramaId || undefined);
@@ -100,6 +104,25 @@ export default function MisVisitasPage() {
     },
   });
 
+  // ── Mutación: programar fecha de visita ASIGNADA ──
+  const programarVisitaMutation = useMutation({
+    mutationFn: async ({ visitaId, fecha }: { visitaId: string; fecha: string }) => {
+      await apiService.post('/visitas/programar/', {
+        visitaId,
+        fechaProgramada: new Date(fecha).toISOString(),
+      });
+    },
+    onSuccess: (_data, variables) => {
+      setFechasVisitaProgramar(prev => {
+        const next = { ...prev };
+        delete next[variables.visitaId];
+        return next;
+      });
+      void refetch();
+      void queryClient.invalidateQueries({ queryKey: ['visitas', 'mis-visitas'] });
+    },
+  });
+
   const handleCambiarPrograma = () => {
     setSelectedProgramaId('');
     setSelectedProgramaNombre('');
@@ -125,9 +148,10 @@ export default function MisVisitasPage() {
 
   // ── Contadores por estado ──
   const contadores = useMemo(() => {
-    const c = { total: visitas.length, programadas: 0, enCurso: 0, completadas: 0, canceladas: 0 };
+    const c = { total: visitas.length, asignadas: 0, programadas: 0, enCurso: 0, completadas: 0, canceladas: 0 };
     for (const v of visitas) {
-      if (v.estado === EstadoVisita.PROGRAMADA) c.programadas++;
+      if (v.estado === EstadoVisita.ASIGNADA) c.asignadas++;
+      else if (v.estado === EstadoVisita.PROGRAMADA) c.programadas++;
       else if (v.estado === EstadoVisita.REALIZANDO) c.enCurso++;
       else if (v.estado === EstadoVisita.COMPLETADA) c.completadas++;
       else if (v.estado === EstadoVisita.CANCELADA) c.canceladas++;
@@ -238,9 +262,10 @@ export default function MisVisitasPage() {
           {vistaActiva === 'asignadas' && (
             <>
               {/* ── Tarjetas resumen ── */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <StatCard label="Total" value={contadores.total} color="bg-gray-100 text-gray-700" />
-                <StatCard label="Pendientes" value={contadores.programadas} color="bg-blue-50 text-blue-700" />
+                <StatCard label="Por programar" value={contadores.asignadas} color="bg-yellow-50 text-yellow-700" />
+                <StatCard label="Programadas" value={contadores.programadas} color="bg-blue-50 text-blue-700" />
                 <StatCard label="En curso" value={contadores.enCurso} color="bg-amber-50 text-amber-700" />
                 <StatCard label="Realizadas" value={contadores.completadas} color="bg-green-50 text-green-700" />
                 <StatCard label="Canceladas" value={contadores.canceladas} color="bg-red-50 text-red-700" />
@@ -324,8 +349,12 @@ export default function MisVisitasPage() {
                       <tbody className="divide-y divide-gray-100">
                         {filtradas.map(v => {
                           const cfg = ESTADO_CONFIG[v.estado] ?? { label: v.estado, bg: 'bg-gray-100', text: 'text-gray-600' };
+                          const esAsignada = v.estado === EstadoVisita.ASIGNADA;
+                          const fechaVal = fechasVisitaProgramar[v.id] ?? '';
+                          const isProgramando = programarVisitaMutation.isPending &&
+                            (programarVisitaMutation.variables as { visitaId: string })?.visitaId === v.id;
                           return (
-                            <tr key={v.id} className="hover:bg-gray-50 transition-colors">
+                            <tr key={v.id} className={`hover:bg-gray-50 transition-colors ${esAsignada ? 'bg-yellow-50/40' : ''}`}>
                               <td className="px-4 py-3 max-w-xs truncate font-medium text-gray-900" title={v.direccion}>
                                 {v.direccion}
                               </td>
@@ -336,7 +365,33 @@ export default function MisVisitasPage() {
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-gray-600">
-                                {formatFecha(v.fechaProgramada)}
+                                {esAsignada ? (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="datetime-local"
+                                      value={fechaVal}
+                                      onChange={e =>
+                                        setFechasVisitaProgramar(prev => ({ ...prev, [v.id]: e.target.value }))
+                                      }
+                                      className="px-2 py-1 text-xs border border-yellow-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white"
+                                    />
+                                    <button
+                                      disabled={!fechaVal || isProgramando}
+                                      onClick={() => programarVisitaMutation.mutate({ visitaId: v.id, fecha: fechaVal })}
+                                      className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-white bg-yellow-600 rounded-lg hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                      {isProgramando ? (
+                                        <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                        </svg>
+                                      ) : '📅'}{' '}
+                                      Programar
+                                    </button>
+                                  </div>
+                                ) : (
+                                  formatFecha(v.fechaProgramada)
+                                )}
                               </td>
                               <td className="px-4 py-3 text-gray-600">
                                 {v.calificacion != null ? (

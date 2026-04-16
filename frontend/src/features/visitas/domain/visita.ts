@@ -5,6 +5,7 @@
 import { BaseEntity } from '../../../shared/domain/base-entity';
 
 export enum EstadoVisita {
+  ASIGNADA = 'ASIGNADA',
   PROGRAMADA = 'PROGRAMADA',
   REALIZANDO = 'REALIZANDO',
   COMPLETADA = 'COMPLETADA',
@@ -27,7 +28,7 @@ export class Visita extends BaseEntity {
     public tipoVisita: TipoVisita,
     public estado: EstadoVisita,
     public direccion: string,
-    public fechaProgramada: Date,
+    public fechaProgramada?: Date,
     public inspectorId?: string,
     public observaciones?: string,
     public fotosUrl?: string,

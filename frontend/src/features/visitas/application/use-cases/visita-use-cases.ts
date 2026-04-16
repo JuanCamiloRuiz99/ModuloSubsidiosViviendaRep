@@ -23,7 +23,7 @@ export class CrearVisitaUseCase {
       input.postulanteId,
       input.programaId,
       input.tipoVisita as TipoVisita,
-      EstadoVisita.PROGRAMADA,
+      EstadoVisita.ASIGNADA,
       input.direccion,
       input.fechaProgramada,
       input.inspectorId

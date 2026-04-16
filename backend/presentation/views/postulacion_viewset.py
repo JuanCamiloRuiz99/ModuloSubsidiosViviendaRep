@@ -54,6 +54,8 @@ ESTADO_LABELS = {
     'EN_REVISION':            'En revisión',
     'SUBSANACION':            'Subsanación',
     'VISITA_PENDIENTE':       'Visita pendiente',
+    'VISITA_ASIGNADA':        'Visita asignada',
+    'VISITA_PROGRAMADA':      'Visita programada',
     'VISITA_REALIZADA':       'Visita realizada',
     'DOCUMENTOS_INCOMPLETOS': 'Documentos incompletos',
     'DOCUMENTOS_CARGADOS':    'Documentos cargados',
@@ -195,13 +197,23 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 programa_nom = g.etapa.programa.nombre
 
             # Buscar visita asociada a la postulación
+            visita_obj = None
             visita_id = None
             if p:
-                visita = Visita.objects.filter(
+                visita_obj = Visita.objects.filter(
                     postulacion_id=p.id, activo_logico=True,
-                ).exclude(estado_visita='CANCELADA').order_by('-fecha_registro').first()
-                if visita:
-                    visita_id = visita.id
+                ).exclude(estado_visita='CANCELADA').select_related('encuestador').order_by('-fecha_registro').first()
+                if visita_obj:
+                    visita_id = visita_obj.id
+
+            # Visitante asignado (encuestador de la visita)
+            visitante_data = None
+            if visita_obj and visita_obj.encuestador_id:
+                enc = visita_obj.encuestador
+                visitante_data = {
+                    'id': enc.id_usuario,
+                    'nombre': enc.nombre_completo,
+                }
 
             results.append({
                 'id':              g.id,
@@ -221,6 +233,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 'direccion':       g.direccion,
                 'total_miembros':  g.total_miembros,
                 'visita_id':       visita_id,
+                'visitante_asignado': visitante_data,
                 'funcionario_asignado': {
                     'id': p.funcionario_asignado.id_usuario,
                     'nombre': p.funcionario_asignado.nombre_completo,
@@ -627,7 +640,10 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             func_map = {f.id_usuario: f.nombre_completo for f in funcionarios}
             for fid, pids in asignaciones.items():
                 if pids:
-                    Postulacion.objects.filter(id__in=pids).update(funcionario_asignado_id=fid)
+                    Postulacion.objects.filter(id__in=pids).update(
+                        funcionario_asignado_id=fid,
+                        estado='EN_REVISION',
+                    )
                     total_asignadas += len(pids)
                 resumen.append({
                     'funcionario_id': fid,
@@ -679,7 +695,9 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             )
 
         postulacion.funcionario_asignado = funcionario
-        postulacion.save(update_fields=['funcionario_asignado'])
+        if postulacion.estado == 'REGISTRADA':
+            postulacion.estado = 'EN_REVISION'
+        postulacion.save(update_fields=['funcionario_asignado', 'estado'])
 
         return Response({
             'detail': 'Postulación asignada correctamente.',
@@ -931,9 +949,14 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             postulacion = gestion.postulacion if gestion else None
             if not postulacion:
                 continue
+            # Ocultar resultado si el programa culminó y no es beneficiario
+            programa = postulacion.programa
+            if (programa and programa.estado == 'CULMINADO'
+                    and postulacion.estado == 'NO_BENEFICIARIO'):
+                continue
             resultados.append({
                 'numero_radicado': gestion.numero_radicado,
-                'programa': postulacion.programa.nombre if postulacion.programa else '',
+                'programa': programa.nombre if programa else '',
                 'estado': postulacion.estado,
                 'estado_label': dict(Postulacion.ESTADOS).get(postulacion.estado, postulacion.estado),
                 'fecha_postulacion': postulacion.fecha_postulacion,

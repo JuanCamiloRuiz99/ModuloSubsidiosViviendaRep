@@ -14,6 +14,9 @@ class EtapaSerializer(serializers.ModelSerializer):
     registro_hogar_publicado = serializers.SerializerMethodField()
     visita_tecnica_publicado = serializers.SerializerMethodField()
     gestion_documental_publicado = serializers.SerializerMethodField()
+    registro_hogar_guardado = serializers.SerializerMethodField()
+    visita_tecnica_guardado = serializers.SerializerMethodField()
+    gestion_documental_guardado = serializers.SerializerMethodField()
 
     class Meta:
         model = Etapa
@@ -32,6 +35,9 @@ class EtapaSerializer(serializers.ModelSerializer):
             'registro_hogar_publicado',
             'visita_tecnica_publicado',
             'gestion_documental_publicado',
+            'registro_hogar_guardado',
+            'visita_tecnica_guardado',
+            'gestion_documental_guardado',
             'finalizada',
             'fecha_finalizacion',
         ]
@@ -64,5 +70,23 @@ class EtapaSerializer(serializers.ModelSerializer):
     def get_gestion_documental_publicado(self, obj):
         try:
             return obj.config_gestion_documental.publicado
+        except ConfigGestionDocumental.DoesNotExist:
+            return False
+
+    def get_registro_hogar_guardado(self, obj):
+        try:
+            return bool(obj.config_registro_hogar.campos)
+        except ConfigRegistroHogar.DoesNotExist:
+            return False
+
+    def get_visita_tecnica_guardado(self, obj):
+        try:
+            return bool(obj.config_visita_tecnica.campos)
+        except ConfigVisitaTecnica.DoesNotExist:
+            return False
+
+    def get_gestion_documental_guardado(self, obj):
+        try:
+            return bool(obj.config_gestion_documental.campos)
         except ConfigGestionDocumental.DoesNotExist:
             return False

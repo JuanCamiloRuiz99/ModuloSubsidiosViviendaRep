@@ -24,6 +24,9 @@ export interface EtapaData {
   registro_hogar_publicado: boolean;
   visita_tecnica_publicado: boolean;
   gestion_documental_publicado: boolean;
+  registro_hogar_guardado: boolean;
+  visita_tecnica_guardado: boolean;
+  gestion_documental_guardado: boolean;
   finalizada: boolean;
   fecha_finalizacion: string | null;
 }

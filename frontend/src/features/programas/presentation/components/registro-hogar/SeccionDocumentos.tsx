@@ -24,6 +24,7 @@ interface Props {
   onChangeDocHogar: (docs: DocumentoHogarEntry[]) => void;
   miembros: MiembroHogarForm[];
   onChangeDocMiembro: (miembroLocalId: string, docs: DocumentoMiembroEntry[]) => void;
+  esPropietario: boolean | null;
 }
 
 // ── Fila de documento ─────────────────────────────────────────────────────── //
@@ -123,6 +124,7 @@ export const SeccionDocumentos: React.FC<Props> = ({
   onChangeDocHogar,
   miembros,
   onChangeDocMiembro,
+  esPropietario,
 }) => {
   const updateHogar = (tipo: string, partial: Partial<DocumentoHogarEntry>) =>
     onChangeDocHogar(
@@ -171,7 +173,13 @@ export const SeccionDocumentos: React.FC<Props> = ({
       miembro.documentos.filter((_, i) => i !== realIdx),
     );
 
-  const subidosHogar = documentosHogar.filter(d => d.file !== null).length;
+  const tiposHogarVisibles = TIPOS_DOCUMENTO_HOGAR.filter(
+    t => t.value !== 'ESCRITURA_PUBLICA_PREDIO' || esPropietario !== false,
+  );
+
+  const subidosHogar = tiposHogarVisibles.filter(
+    t => documentosHogar.find(d => d.tipo_documento === t.value)?.file !== null,
+  ).length;
 
   return (
     <div className="flex flex-col gap-8">
@@ -195,11 +203,11 @@ export const SeccionDocumentos: React.FC<Props> = ({
             <p className="text-xs text-gray-500 mt-0.5">Documentos del predio y servicios públicos</p>
           </div>
           <span className="text-xs text-gray-400 font-medium">
-            {subidosHogar} / {documentosHogar.length} cargados
+            {subidosHogar} / {tiposHogarVisibles.length} cargados
           </span>
         </div>
         <div className="flex flex-col gap-2">
-          {TIPOS_DOCUMENTO_HOGAR.map(tipo => {
+          {tiposHogarVisibles.map(tipo => {
             const entrada = documentosHogar.find(d => d.tipo_documento === tipo.value)!;
             return (
               <FilaDocumento

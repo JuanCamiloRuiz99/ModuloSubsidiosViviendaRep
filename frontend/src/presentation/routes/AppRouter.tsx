@@ -41,9 +41,9 @@ export default function AppRouter() {
                 <Routes>
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="usuarios/*"    element={<PrivateRoute allowedRoles={[1]}><UsuariosRoutes /></PrivateRoute>} />
-                  <Route path="programas/*"   element={<PrivateRoute allowedRoles={[1, 2]}><ProgramasRoutes /></PrivateRoute>} />
-                  <Route path="postulantes/*" element={<PrivateRoute allowedRoles={[1, 2]}><PostulantesRoutes /></PrivateRoute>} />
-                  <Route path="visitas/*"     element={<PrivateRoute allowedRoles={[1, 2]}><VisitasRoutes /></PrivateRoute>} />
+                  <Route path="programas/*"   element={<PrivateRoute allowedRoles={[1]}><ProgramasRoutes /></PrivateRoute>} />
+                  <Route path="postulantes/*" element={<PrivateRoute allowedRoles={[1]}><PostulantesRoutes /></PrivateRoute>} />
+                  <Route path="visitas/*"     element={<PrivateRoute allowedRoles={[1]}><VisitasRoutes /></PrivateRoute>} />
                   <Route path="mis-visitas/*" element={<PrivateRoute allowedRoles={[3]}><MisVisitasRoutes /></PrivateRoute>} />
                   <Route path="mis-postulaciones/*" element={<PrivateRoute allowedRoles={[2]}><MisPostulacionesRoutes /></PrivateRoute>} />
                   <Route path="documentos-internos/*" element={<PrivateRoute allowedRoles={[1, 2]}><GestionDocumentalInternaRoutes /></PrivateRoute>} />

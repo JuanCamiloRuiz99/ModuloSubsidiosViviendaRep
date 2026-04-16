@@ -5,17 +5,19 @@
  * de Registro del Hogar, con búsqueda en tiempo real y filtro por estado.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { usePostulantes, usePostulanteDetalle, useActualizarPostulante } from '../hooks/use-postulantes';
 import type { PostulanteRow, ActualizarPostulanteData } from '../hooks/use-postulantes';
-import { StatCard, HeaderPanel } from '../../../../shared/presentation/components';
+import { HeaderPanel } from '../../../../shared/presentation/components';
 import { PostulanteDetalleModal } from '../components/PostulanteDetalleModal';
 import { PostulanteEditarModal } from '../components/PostulanteEditarModal';
 import { DistribuirPostulacionesModal } from '../components/DistribuirPostulacionesModal';
 import { AsignarFuncionarioModal } from '../components/AsignarFuncionarioModal';
 import { VisitaInfoModal } from '../components/VisitaInfoModal';
 import { DescargarDocumentosModal } from '../components/DescargarDocumentosModal';
+import { ReasignarVisitanteModal } from '../components/ReasignarVisitanteModal';
 import { useProgramas } from '../../../programas/presentation/hooks/useProgramas';
+import { useEtapas } from '../../../programas/presentation/hooks/useEtapas';
 import {
   ESTADO_STYLES,
   ESTADOS_FILTRO,
@@ -40,6 +42,8 @@ function nombreCompleto(row: PostulanteRow): string {
   return buildNombre(primer_nombre, segundo_nombre, primer_apellido, segundo_apellido);
 }
 
+const ITEMS_PER_PAGE = 10;
+
 // ── Página principal ──────────────────────────────────────────────────────── //
 
 export const PostulantesPage: React.FC = () => {
@@ -57,8 +61,12 @@ export const PostulantesPage: React.FC = () => {
   const [asignarRow, setAsignarRow] = useState<{ postulacionId: number; radicado: string; solicitante: string; funcionarioId: number | null } | null>(null);
   const [seleccionadas, setSeleccionadas] = useState<Set<number>>(new Set());
   const [isDescargarOpen, setIsDescargarOpen] = useState(false);
+  const [isReasignarVisitanteOpen, setIsReasignarVisitanteOpen] = useState(false);
+  const [reasignarVisitanteRow, setReasignarVisitanteRow] = useState<{ postulacionId: number; radicado: string; solicitante: string; visitanteId: number | null } | null>(null);
+  const [paginaActual, setPaginaActual] = useState(1);
 
   const { programas, isLoading: isLoadingProgramas } = useProgramas();
+  const { data: etapas = [] } = useEtapas(programaSeleccionado || '0');
   const { postulantes, isLoading, error, refetch } = usePostulantes(undefined, programaSeleccionado || undefined);
   const {
     detalle: detalleSeleccionado,
@@ -72,24 +80,9 @@ export const PostulantesPage: React.FC = () => {
     setIsEditarOpen(false);
   };
 
-  // Estadísticas
-  const stats = useMemo(() => ({
-    total:            postulantes.length,
-    registradas:      postulantes.filter(p => p.estado === 'REGISTRADA').length,
-    revision:         postulantes.filter(p => p.estado === 'EN_REVISION').length,
-    subsanacion:      postulantes.filter(p => p.estado === 'SUBSANACION').length,
-    visitaPendiente:  postulantes.filter(p => p.estado === 'VISITA_PENDIENTE').length,
-    visitaRealizada:  postulantes.filter(p => p.estado === 'VISITA_REALIZADA').length,
-    docsCargados:     postulantes.filter(p => p.estado === 'DOCUMENTOS_CARGADOS').length,
-    beneficiados:     postulantes.filter(p => p.estado === 'BENEFICIADO').length,
-    noBeneficiarios:  postulantes.filter(p => p.estado === 'NO_BENEFICIARIO').length,
-    aprobadas:        postulantes.filter(p => p.estado === 'APROBADA').length,
-    rechazadas:       postulantes.filter(p => p.estado === 'RECHAZADA').length,
-  }), [postulantes]);
-
-  // Postulaciones EN_REVISION sin asignar (para distribución)
-  const sinAsignarRevision = useMemo(
-    () => postulantes.filter(p => p.estado === 'EN_REVISION' && !p.funcionario_asignado),
+  // Postulaciones sin funcionario asignado (para distribución)
+  const sinFuncionario = useMemo(
+    () => postulantes.filter(p => !p.funcionario_asignado),
     [postulantes],
   );
 
@@ -114,6 +107,17 @@ export const PostulantesPage: React.FC = () => {
       );
     });
   }, [postulantes, filtroEstado, busqueda]);
+
+  // Reset página al cambiar filtros
+  const totalPaginas = Math.max(1, Math.ceil(filas.length / ITEMS_PER_PAGE));
+  const paginaSegura = Math.min(paginaActual, totalPaginas);
+  const paginatedFilas = useMemo(() => {
+    const inicio = (paginaSegura - 1) * ITEMS_PER_PAGE;
+    return filas.slice(inicio, inicio + ITEMS_PER_PAGE);
+  }, [filas, paginaSegura]);
+
+  const handleFiltroEstado = useCallback((v: string) => { setFiltroEstado(v); setPaginaActual(1); }, []);
+  const handleBusqueda = useCallback((v: string) => { setBusqueda(v); setPaginaActual(1); }, []);
 
   return (
     <div className="max-w-7xl mx-auto p-8">
@@ -156,73 +160,6 @@ export const PostulantesPage: React.FC = () => {
       {/* ── Contenido visible solo con programa seleccionado ── */}
       {programaSeleccionado && (<>
 
-      {/* ── Tarjetas estadísticas reutilizadas ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <StatCard
-          title="Registros totales"
-          value={stats.total}
-          color="blue"
-          description="Todos los hogares registrados"
-          onClick={() => setFiltroEstado('')}
-        />
-        <StatCard
-          title="Registradas"
-          value={stats.registradas}
-          color="purple"
-          description="Nuevas solicitudes pendientes"
-          onClick={() => setFiltroEstado('REGISTRADA')}
-        />
-        <StatCard
-          title="En Revisión"
-          value={stats.revision}
-          color="orange"
-          description="En proceso de evaluación"
-          onClick={() => setFiltroEstado('EN_REVISION')}
-        />
-        <StatCard
-          title="Subsanación"
-          value={stats.subsanacion}
-          color="red"
-          description="A la espera de ajustes"
-          onClick={() => setFiltroEstado('SUBSANACION')}
-        />
-        <StatCard
-          title="Visita realizada"
-          value={stats.visitaRealizada}
-          color="teal"
-          description="Visitas técnicas completadas"
-          onClick={() => setFiltroEstado('VISITA_REALIZADA')}
-        />
-        <StatCard
-          title="Aprobadas"
-          value={stats.aprobadas}
-          color="green"
-          description="Postulaciones aprobadas"
-          onClick={() => setFiltroEstado('APROBADA')}
-        />
-        <StatCard
-          title="Docs. cargados"
-          value={stats.docsCargados}
-          color="blue"
-          description="Documentos completos"
-          onClick={() => setFiltroEstado('DOCUMENTOS_CARGADOS')}
-        />
-        <StatCard
-          title="Beneficiados"
-          value={stats.beneficiados}
-          color="purple"
-          description="Seleccionados en sorteo"
-          onClick={() => setFiltroEstado('BENEFICIADO')}
-        />
-        <StatCard
-          title="No beneficiarios"
-          value={stats.noBeneficiarios}
-          color="orange"
-          description="No seleccionados en sorteo"
-          onClick={() => setFiltroEstado('NO_BENEFICIARIO')}
-        />
-      </div>
-
       {/* ── Barra de selección ── */}
       {seleccionadas.size > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
@@ -261,7 +198,7 @@ export const PostulantesPage: React.FC = () => {
           <input
             type="text"
             value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
+            onChange={e => handleBusqueda(e.target.value)}
             placeholder="Buscar por nombre, documento, radicado o municipio..."
             className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
           />
@@ -270,7 +207,7 @@ export const PostulantesPage: React.FC = () => {
         {/* Filtro estado */}
         <select
           value={filtroEstado}
-          onChange={e => setFiltroEstado(e.target.value)}
+          onChange={e => handleFiltroEstado(e.target.value)}
           className="px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[190px]"
         >
           {ESTADOS_FILTRO.map(e => (
@@ -278,8 +215,8 @@ export const PostulantesPage: React.FC = () => {
           ))}
         </select>
 
-        {/* Botón distribuir – solo visible con filtro EN_REVISION y si hay postulaciones sin asignar */}
-        {filtroEstado === 'EN_REVISION' && sinAsignarRevision.length > 0 && (
+        {/* Botón distribuir – visible cuando hay postulaciones sin funcionario asignado */}
+        {sinFuncionario.length > 0 && (
           <button
             onClick={() => setIsDistribuirOpen(true)}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 whitespace-nowrap"
@@ -287,7 +224,7 @@ export const PostulantesPage: React.FC = () => {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            Distribuir
+            Distribuir ({sinFuncionario.length})
           </button>
         )}
       </div>
@@ -339,18 +276,18 @@ export const PostulantesPage: React.FC = () => {
                   <th className="px-3 py-3 w-10">
                     <input
                       type="checkbox"
-                      checked={filas.length > 0 && filas.every(r => r.id_postulacion != null && seleccionadas.has(r.id_postulacion))}
+                      checked={paginatedFilas.length > 0 && paginatedFilas.every(r => r.id_postulacion != null && seleccionadas.has(r.id_postulacion))}
                       onChange={e => {
                         if (e.target.checked) {
                           setSeleccionadas(prev => {
                             const next = new Set(prev);
-                            filas.forEach(r => { if (r.id_postulacion != null) next.add(r.id_postulacion); });
+                            paginatedFilas.forEach(r => { if (r.id_postulacion != null) next.add(r.id_postulacion); });
                             return next;
                           });
                         } else {
                           setSeleccionadas(prev => {
                             const next = new Set(prev);
-                            filas.forEach(r => { if (r.id_postulacion != null) next.delete(r.id_postulacion); });
+                            paginatedFilas.forEach(r => { if (r.id_postulacion != null) next.delete(r.id_postulacion); });
                             return next;
                           });
                         }
@@ -368,11 +305,12 @@ export const PostulantesPage: React.FC = () => {
                   <th className="px-4 py-3 font-semibold text-gray-600 text-center whitespace-nowrap">Miembros</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Estado</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Funcionario</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Visitante</th>
                   <th className="px-4 py-3 font-semibold text-gray-600 text-center whitespace-nowrap">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filas.map(row => (
+                {paginatedFilas.map(row => (
                   <tr key={row.id} className={`transition-colors ${
                     row.id_postulacion != null && seleccionadas.has(row.id_postulacion)
                       ? 'bg-blue-50 hover:bg-blue-100'
@@ -469,6 +407,13 @@ export const PostulantesPage: React.FC = () => {
                         : <span className="text-gray-300 text-xs">Sin asignar</span>}
                     </td>
 
+                    {/* Visitante asignado */}
+                    <td className="px-4 py-3">
+                      {row.visitante_asignado
+                        ? <span className="text-xs font-medium text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">{row.visitante_asignado.nombre}</span>
+                        : <span className="text-gray-300 text-xs">Sin asignar</span>}
+                    </td>
+
                     {/* Acciones */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="relative flex items-center justify-center gap-2">
@@ -536,6 +481,26 @@ export const PostulantesPage: React.FC = () => {
                                 {row.funcionario_asignado ? 'Reasignar' : 'Asignar'}
                               </button>
                             )}
+                            {row.visita_id && row.id_postulacion && (
+                              <button
+                                className="w-full text-left px-3 py-2 hover:bg-teal-50 text-teal-700 font-medium flex items-center gap-2"
+                                onMouseDown={() => {
+                                  setReasignarVisitanteRow({
+                                    postulacionId: row.id_postulacion!,
+                                    radicado: row.numero_radicado,
+                                    solicitante: nombreCompleto(row),
+                                    visitanteId: row.visitante_asignado?.id ?? null,
+                                  });
+                                  setIsReasignarVisitanteOpen(true);
+                                  setOpenMenuId(null);
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                                Reasignar visitante
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -545,9 +510,57 @@ export const PostulantesPage: React.FC = () => {
               </tbody>
             </table>
 
-            {/* Footer con conteo */}
-            <div className="px-4 py-3 border-t border-gray-100 text-xs text-gray-400 bg-gray-50">
-              Mostrando {filas.length} de {postulantes.length} registro{postulantes.length !== 1 ? 's' : ''}
+            {/* Footer con paginación */}
+            <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                Mostrando {(paginaSegura - 1) * ITEMS_PER_PAGE + 1}–{Math.min(paginaSegura * ITEMS_PER_PAGE, filas.length)} de {filas.length} registro{filas.length !== 1 ? 's' : ''}
+              </span>
+              {totalPaginas > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPaginaActual(1)}
+                    disabled={paginaSegura === 1}
+                    className="px-2 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >«</button>
+                  <button
+                    onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                    disabled={paginaSegura === 1}
+                    className="px-2 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >‹</button>
+                  {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPaginas || Math.abs(p - paginaSegura) <= 2)
+                    .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`dots-${idx}`} className="px-1 text-xs text-gray-400">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPaginaActual(p)}
+                          className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                            p === paginaSegura
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >{p}</button>
+                      )
+                    )}
+                  <button
+                    onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                    disabled={paginaSegura === totalPaginas}
+                    className="px-2 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >›</button>
+                  <button
+                    onClick={() => setPaginaActual(totalPaginas)}
+                    disabled={paginaSegura === totalPaginas}
+                    className="px-2 py-1 rounded text-xs font-medium text-gray-600 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >»</button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -574,8 +587,8 @@ export const PostulantesPage: React.FC = () => {
       <DistribuirPostulacionesModal
         isOpen={isDistribuirOpen}
         onClose={() => setIsDistribuirOpen(false)}
-        totalPostulaciones={sinAsignarRevision.length}
-        postulacionIds={sinAsignarRevision.map(p => p.id_postulacion).filter((id): id is number => id != null)}
+        totalPostulaciones={sinFuncionario.length}
+        postulacionIds={sinFuncionario.map(p => p.id_postulacion).filter((id): id is number => id != null)}
       />
       <VisitaInfoModal
         visitaId={visitaIdModal}
@@ -595,6 +608,15 @@ export const PostulantesPage: React.FC = () => {
         onClose={() => setIsDescargarOpen(false)}
         postulacionIds={Array.from(seleccionadas)}
         totalSeleccionadas={seleccionadas.size}
+        etapas={etapas}
+      />
+      <ReasignarVisitanteModal
+        isOpen={isReasignarVisitanteOpen}
+        onClose={() => { setIsReasignarVisitanteOpen(false); setReasignarVisitanteRow(null); }}
+        postulacionId={reasignarVisitanteRow?.postulacionId ?? null}
+        radicado={reasignarVisitanteRow?.radicado ?? ''}
+        solicitante={reasignarVisitanteRow?.solicitante ?? ''}
+        visitanteActualId={reasignarVisitanteRow?.visitanteId ?? null}
       />
 
     </div>

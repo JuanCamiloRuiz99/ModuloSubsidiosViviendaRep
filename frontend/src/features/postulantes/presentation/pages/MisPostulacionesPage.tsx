@@ -9,6 +9,8 @@ import { usePostulanteDetalle, useActualizarPostulante } from '../hooks/use-post
 import type { PostulanteRow, ActualizarPostulanteData } from '../hooks/use-postulantes';
 import { PostulanteDetalleModal } from '../components/PostulanteDetalleModal';
 import { PostulanteEditarModal } from '../components/PostulanteEditarModal';
+import { HeaderPanel } from '../../../../shared/presentation/components';
+import { useProgramas } from '../../../programas/presentation/hooks/useProgramas';
 import {
   ESTADO_STYLES,
   ESTADOS_FILTRO,
@@ -33,19 +35,17 @@ function nombreCompleto(row: PostulanteRow): string {
   return buildNombre(primer_nombre, segundo_nombre, primer_apellido, segundo_apellido);
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className={`rounded-xl p-4 ${color}`}>
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="text-xs font-medium mt-0.5 opacity-80">{label}</p>
-    </div>
-  );
-}
-
 // ── Página ─────────────────────────────────────────────────────────────────── //
 
 export default function MisPostulacionesPage() {
-  const { postulantes, isLoading, error, refetch } = useMisPostulaciones();
+  const { programas } = useProgramas();
+  const programasDisponibles = useMemo(
+    () => (programas ?? []).filter((p: any) => p.estado !== 'CULMINADO'),
+    [programas],
+  );
+
+  const [selectedProgramaId, setSelectedProgramaId] = useState<string>('');
+  const { postulantes, isLoading, error, refetch } = useMisPostulaciones(selectedProgramaId || null);
 
   const [filtroEstado, setFiltroEstado] = useState('');
   const [busqueda, setBusqueda]         = useState('');
@@ -65,21 +65,6 @@ export default function MisPostulacionesPage() {
     await actualizarPostulante({ id, data });
     setIsEditarOpen(false);
   };
-
-  // Contadores
-  const contadores = useMemo(() => {
-    const c = { total: 0, registradas: 0, revision: 0, subsanacion: 0, aprobadas: 0, beneficiados: 0, rechazadas: 0 };
-    for (const p of postulantes) {
-      c.total++;
-      if (p.estado === 'REGISTRADA')      c.registradas++;
-      if (p.estado === 'EN_REVISION')     c.revision++;
-      if (p.estado === 'SUBSANACION')     c.subsanacion++;
-      if (p.estado === 'APROBADA')        c.aprobadas++;
-      if (p.estado === 'BENEFICIADO')     c.beneficiados++;
-      if (p.estado === 'RECHAZADA')       c.rechazadas++;
-    }
-    return c;
-  }, [postulantes]);
 
   // Filtrado + búsqueda
   const filas = useMemo(() => {
@@ -119,35 +104,40 @@ export default function MisPostulacionesPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto p-8">
 
       {/* ── Encabezado ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mis Postulaciones Asignadas</h1>
-          <p className="text-sm text-gray-500 mt-1">Gestiona las postulaciones que te han sido asignadas</p>
-        </div>
-        <button
-          onClick={() => refetch()}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+      <HeaderPanel
+        title="Mis Postulaciones Asignadas"
+        subtitle="Gestiona las postulaciones que te han sido asignadas"
+        actionLabel={selectedProgramaId ? 'Actualizar' : undefined}
+        onAction={selectedProgramaId ? () => void refetch() : undefined}
+      />
+
+      {/* ── Selector de programa ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-8">
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Seleccionar programa</label>
+        <select
+          value={selectedProgramaId}
+          onChange={e => setSelectedProgramaId(e.target.value)}
+          className="w-full max-w-md px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Actualizar
-        </button>
+          <option value="">— Seleccione un programa —</option>
+          {programasDisponibles.map((p: any) => (
+            <option key={p.id} value={p.id}>{p.nombre}</option>
+          ))}
+        </select>
       </div>
 
-      {/* ── Tarjetas resumen ── */}
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
-        <StatCard label="Total asignadas" value={contadores.total} color="bg-gray-100 text-gray-700" />
-        <StatCard label="Registradas" value={contadores.registradas} color="bg-blue-50 text-blue-700" />
-        <StatCard label="En revisión" value={contadores.revision} color="bg-yellow-50 text-yellow-700" />
-        <StatCard label="Subsanación" value={contadores.subsanacion} color="bg-amber-50 text-amber-700" />
-        <StatCard label="Aprobadas" value={contadores.aprobadas} color="bg-green-50 text-green-700" />
-        <StatCard label="Beneficiados" value={contadores.beneficiados} color="bg-purple-50 text-purple-700" />
-        <StatCard label="Rechazadas" value={contadores.rechazadas} color="bg-red-50 text-red-700" />
-      </div>
+      {!selectedProgramaId ? (
+        <div className="flex items-center justify-center h-64 bg-white rounded-xl border border-gray-200">
+          <div className="text-center">
+            <div className="text-5xl mb-3">📋</div>
+            <p className="text-gray-500 font-medium">Selecciona un programa para ver tus postulaciones asignadas</p>
+          </div>
+        </div>
+      ) : (
+      <>
 
       {/* ── Filtros ── */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -311,6 +301,9 @@ export default function MisPostulacionesPage() {
             Mostrando {filas.length} de {postulantes.length} postulación{postulantes.length !== 1 ? 'es' : ''}
           </div>
         </div>
+      )}
+
+      </>
       )}
 
       {/* ── Modales ── */}

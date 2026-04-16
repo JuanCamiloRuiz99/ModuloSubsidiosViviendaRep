@@ -12,25 +12,30 @@ import type { TiposDocumentoSeleccion } from '../hooks/use-descargar-documentos'
 
 interface TipoDoc { value: string; label: string }
 
+/**
+ * Documentos del HOGAR (compartidos por todos los miembros).
+ * Coinciden con DocumentoGestionHogar.TIPO_CHOICES en el backend.
+ */
 const TIPOS_HOGAR: TipoDoc[] = [
-  { value: 'FOTO_CEDULA_FRENTE',             label: 'Foto cédula frente' },
-  { value: 'FOTO_CEDULA_REVERSO',            label: 'Foto cédula reverso' },
   { value: 'RECIBO_PREDIAL',                 label: 'Recibo predial' },
   { value: 'CERTIFICADO_TRADICION_LIBERTAD', label: 'Certificado de tradición y libertad' },
   { value: 'ESCRITURA_PUBLICA_PREDIO',       label: 'Escritura pública del predio' },
   { value: 'RECIBO_SERVICIOS_PUBLICOS',      label: 'Recibo de servicios públicos' },
   { value: 'DECLARACION_JURAMENTADA',        label: 'Declaración juramentada' },
   { value: 'CERTIFICADO_RESIDENCIA',         label: 'Certificado de residencia' },
-  { value: 'CERTIFICADO_SISBEN',             label: 'Certificado SISBEN' },
-  { value: 'CERTIFICADO_DISCAPACIDAD',       label: 'Certificado de discapacidad' },
-  { value: 'REGISTRO_VICTIMA',               label: 'Registro de víctima (RUV)' },
   { value: 'OTRO',                           label: 'Otros' },
 ];
 
+/**
+ * Documentos por MIEMBRO individual del hogar.
+ * Coinciden con DocumentoMiembroHogar.TIPO_CHOICES en el backend.
+ */
 const TIPOS_MIEMBRO: TipoDoc[] = [
-  { value: 'CEDULA',                   label: 'Cédula de ciudadanía' },
+  { value: 'FOTO_CEDULA_FRENTE',       label: 'Foto cédula frente' },
+  { value: 'FOTO_CEDULA_REVERSO',      label: 'Foto cédula reverso' },
   { value: 'REGISTRO_CIVIL',           label: 'Registro civil' },
   { value: 'TARJETA_IDENTIDAD',        label: 'Tarjeta de identidad' },
+  { value: 'CERTIFICADO_SISBEN',       label: 'Certificado SISBEN' },
   { value: 'CERTIFICADO_DISCAPACIDAD', label: 'Certificado de discapacidad' },
   { value: 'CERTIFICADO_VICTIMA',      label: 'Certificado de víctima' },
   { value: 'OTRO',                     label: 'Otros' },
@@ -82,22 +87,30 @@ interface Seccion {
   key: keyof TiposDocumentoSeleccion;
   titulo: string;
   tipos: TipoDoc[];
+  /** Módulo de etapa requerido para habilitar esta sección. null = siempre habilitada */
+  moduloEtapa: string | null;
 }
 
 const SECCIONES: Seccion[] = [
-  { key: 'hogar',   titulo: 'Etapa 1 — Registro del Hogar',    tipos: TIPOS_HOGAR },
-  { key: 'miembro', titulo: 'Etapa 1 — Documentos de Miembros', tipos: TIPOS_MIEMBRO },
-  { key: 'visita',  titulo: 'Etapa 2 — Visita Técnica',         tipos: TIPOS_VISITA },
-  { key: 'proceso', titulo: 'Etapa 3 — Gestión Documental',     tipos: TIPOS_PROCESO },
+  { key: 'hogar',   titulo: 'Etapa 1 — Documentos del Hogar',     tipos: TIPOS_HOGAR,   moduloEtapa: null },
+  { key: 'miembro', titulo: 'Etapa 1 — Documentos de Miembros',   tipos: TIPOS_MIEMBRO, moduloEtapa: null },
+  { key: 'visita',  titulo: 'Etapa 2 — Visita Técnica',           tipos: TIPOS_VISITA,  moduloEtapa: 'VISITA_TECNICA' },
+  { key: 'proceso', titulo: 'Etapa 3 — Gestión Documental',       tipos: TIPOS_PROCESO, moduloEtapa: 'GESTION_DOCUMENTAL' },
 ];
 
 // ── Props ───────────────────────────────────────────────────────────────── //
+
+interface Etapa {
+  modulo_principal: string;
+  finalizada: boolean;
+}
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   postulacionIds: number[];
   totalSeleccionadas: number;
+  etapas?: Etapa[];
 }
 
 // ── Componente ──────────────────────────────────────────────────────────── //
@@ -107,8 +120,15 @@ export const DescargarDocumentosModal: React.FC<Props> = ({
   onClose,
   postulacionIds,
   totalSeleccionadas,
+  etapas = [],
 }) => {
   const descargar = useDescargarDocumentos();
+
+  /** Una sección se habilita si no requiere etapa o si su etapa está finalizada */
+  const seccionHabilitada = (seccion: Seccion): boolean => {
+    if (!seccion.moduloEtapa) return true;
+    return etapas.some(e => e.modulo_principal === seccion.moduloEtapa && e.finalizada);
+  };
 
   const [seleccion, setSeleccion] = useState<TiposDocumentoSeleccion>({
     hogar: [], miembro: [], visita: [], proceso: [],
@@ -191,16 +211,17 @@ export const DescargarDocumentosModal: React.FC<Props> = ({
             </p>
 
             {SECCIONES.map(seccion => {
-              const isOpen = expandida === seccion.key;
+              const habilitada = seccionHabilitada(seccion);
+              const isOpen = expandida === seccion.key && habilitada;
               const count = seleccion[seccion.key].length;
               const allSelected = count === seccion.tipos.length;
 
               return (
-                <div key={seccion.key} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div key={seccion.key} className={`border rounded-lg overflow-hidden ${habilitada ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
                   {/* Cabecera acordeón */}
                   <button
-                    onClick={() => setExpandida(isOpen ? null : seccion.key)}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                    onClick={() => habilitada && setExpandida(isOpen ? null : seccion.key)}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${habilitada ? 'bg-gray-50 hover:bg-gray-100 cursor-pointer' : 'bg-gray-50 cursor-not-allowed'}`}
                   >
                     <div className="flex items-center gap-2">
                       <svg
@@ -210,13 +231,23 @@ export const DescargarDocumentosModal: React.FC<Props> = ({
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                       </svg>
-                      <span className="text-sm font-semibold text-gray-700">{seccion.titulo}</span>
+                      <span className={`text-sm font-semibold ${habilitada ? 'text-gray-700' : 'text-gray-400'}`}>{seccion.titulo}</span>
                     </div>
-                    {count > 0 && (
-                      <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        {count} seleccionado{count !== 1 ? 's' : ''}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {!habilitada && (
+                        <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          Etapa no finalizada
+                        </span>
+                      )}
+                      {habilitada && count > 0 && (
+                        <span className="text-xs font-medium bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                          {count} seleccionado{count !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
                   </button>
 
                   {/* Contenido */}

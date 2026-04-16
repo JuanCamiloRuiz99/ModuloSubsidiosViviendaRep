@@ -35,7 +35,9 @@ export function useConfigCamposGestionDocumental(etapaId: string | number | unde
     const defaults = buildDefaultConfigGestion();
     const serverCampos = data?.campos ?? {};
     setLocalConfig({ ...defaults, ...serverCampos });
-    setIsDirty(false);
+    // If never saved (empty campos), mark dirty so user can save defaults
+    const hasBeenSaved = Object.keys(serverCampos).length > 0;
+    setIsDirty(!hasBeenSaved);
   }, [data]);
 
   // ── Mutations ────────────────────────────────────────────────────────── //
@@ -45,6 +47,7 @@ export function useConfigCamposGestionDocumental(etapaId: string | number | unde
       configGestionDocumentalRepository.guardarConfig(etapaId!, campos),
     onSuccess: (result) => {
       void queryClient.setQueryData(configGestionDocumentalQueryKey(etapaId!), result);
+      void queryClient.invalidateQueries({ queryKey: ['etapas'] });
       setIsDirty(false);
     },
   });
@@ -64,13 +67,15 @@ export function useConfigCamposGestionDocumental(etapaId: string | number | unde
     const defaults = buildDefaultConfigGestion();
     const serverCampos = data?.campos ?? {};
     setLocalConfig({ ...defaults, ...serverCampos });
-    setIsDirty(false);
+    const hasBeenSaved = Object.keys(serverCampos).length > 0;
+    setIsDirty(!hasBeenSaved);
   }, [data]);
 
   return {
     configCampos: localConfig,
     isLoading,
     isSaving: saveMutation.isPending,
+    saveSuccess: saveMutation.isSuccess,
     saveError: saveMutation.isError
       ? (saveMutation.error instanceof Error ? saveMutation.error.message : 'Error al guardar')
       : null,
