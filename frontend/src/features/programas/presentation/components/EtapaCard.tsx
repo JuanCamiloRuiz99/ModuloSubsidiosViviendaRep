@@ -20,18 +20,40 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
     (etapa.modulo_principal === 'VISITA_TECNICA' && etapa.visita_tecnica_guardado) ||
     (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' && etapa.gestion_documental_guardado) ||
     etapa.formulario_configurado;
-  const isPublicado =
-    etapa.formulario_estado === 'PUBLICADO' ||
-    (etapa.modulo_principal === 'REGISTRO_HOGAR' && etapa.registro_hogar_publicado === true) ||
-    (etapa.modulo_principal === 'VISITA_TECNICA' && etapa.visita_tecnica_publicado === true) ||
-    (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' && etapa.gestion_documental_publicado === true);
+
+  // Determinar el estado específico de publicación (BORRADOR, PUBLICADO, INHABILITADO)
+  const getEstadoFormulario = () => {
+    if (etapa.modulo_principal === 'REGISTRO_HOGAR') {
+      if (etapa.registro_hogar_inhabilitado) return 'INHABILITADO';
+      if (etapa.registro_hogar_publicado) return 'PUBLICADO';
+      if (etapa.registro_hogar_guardado) return 'BORRADOR';
+    } else if (etapa.modulo_principal === 'VISITA_TECNICA') {
+      if (etapa.visita_tecnica_inhabilitado) return 'INHABILITADO';
+      if (etapa.visita_tecnica_publicado) return 'PUBLICADO';
+      if (etapa.visita_tecnica_guardado) return 'BORRADOR';
+    } else if (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA') {
+      if (etapa.gestion_documental_inhabilitado) return 'INHABILITADO';
+      if (etapa.gestion_documental_publicado) return 'PUBLICADO';
+      if (etapa.gestion_documental_guardado) return 'BORRADOR';
+    }
+    return etapa.formulario_estado || 'BORRADOR';
+  };
+
+  const estadoFormulario = getEstadoFormulario();
+  const isPublicado = estadoFormulario === 'PUBLICADO';
+  const isInhabilitado = estadoFormulario === 'INHABILITADO';
 
   const { toggle, isToggling, error: toggleError } = useTogglePublicacionFormulario(programaId);
   const terminarMutation = useTerminarEtapa(programaId);
   const reactivarMutation = useReactivarEtapa(programaId);
 
   const handleTogglePublicacion = () => {
-    if (!isToggling) toggle(etapa.id, isPublicado, etapa.modulo_principal);
+    if (!isToggling) {
+      // Si está PUBLICADO o INHABILITADO, siempre llamar inhabilitar (que hace toggle)
+      // Si está BORRADOR o sin configurar, llamar publicar
+      const shouldInhibit = estadoFormulario === 'PUBLICADO' || estadoFormulario === 'INHABILITADO';
+      toggle(etapa.id, shouldInhibit, etapa.modulo_principal);
+    }
   };
 
   const [showTerminarModal, setShowTerminarModal] = useState(false);
@@ -52,14 +74,18 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm p-5 border-2 ${etapa.finalizada ? 'border-red-400' : isPublicado ? 'border-green-300' : isConfigurado ? 'border-amber-200' : 'border-blue-200'}`}>
+    <div className={`bg-white rounded-xl shadow-sm p-5 border-2 ${etapa.finalizada ? 'border-red-400' : estadoFormulario === 'PUBLICADO' ? 'border-green-300' : estadoFormulario === 'INHABILITADO' ? 'border-orange-300' : isConfigurado ? 'border-amber-200' : 'border-blue-200'}`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
-          <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center ${isPublicado ? 'bg-green-100' : isConfigurado ? 'bg-amber-100' : 'bg-blue-50'}`}>
-            {isPublicado ? (
+          <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center ${estadoFormulario === 'PUBLICADO' ? 'bg-green-100' : estadoFormulario === 'INHABILITADO' ? 'bg-orange-100' : isConfigurado ? 'bg-amber-100' : 'bg-blue-50'}`}>
+            {estadoFormulario === 'PUBLICADO' ? (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            ) : estadoFormulario === 'INHABILITADO' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9 12a3 3 0 11-6 0 3 3 0 016 0zm0 0h.01M15 12a3 3 0 11-6 0 3 3 0 016 0zm0 0h.01" />
               </svg>
             ) : isConfigurado ? (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -75,8 +101,8 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
             <h4 className="text-base font-semibold text-gray-900">
               Etapa {etapa.numero_etapa}: {cfg.label}
             </h4>
-            <p className={`text-sm ${etapa.finalizada ? 'text-purple-600 font-medium' : isPublicado ? 'text-green-600 font-medium' : isConfigurado ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
-              {etapa.finalizada ? 'Finalizada' : isPublicado ? (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ? 'Activada' : 'Publicada') : isConfigurado ? 'Formulario configurado (borrador)' : 'Sin configurar'}
+            <p className={`text-sm ${etapa.finalizada ? 'text-purple-600 font-medium' : estadoFormulario === 'PUBLICADO' ? 'text-green-600 font-medium' : estadoFormulario === 'INHABILITADO' ? 'text-orange-600 font-medium' : isConfigurado ? 'text-amber-600 font-medium' : 'text-gray-400'}`}>
+              {etapa.finalizada ? 'Finalizada' : estadoFormulario === 'PUBLICADO' ? (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ? 'Activada' : 'Publicado') : estadoFormulario === 'INHABILITADO' ? 'Inhabilitada' : isConfigurado ? 'Formulario configurado (borrador)' : 'Sin configurar'}
             </p>
           </div>
         </div>
@@ -88,12 +114,19 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
             </svg>
             Finalizada
           </span>
-        ) : isPublicado ? (
+        ) : estadoFormulario === 'PUBLICADO' ? (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 whitespace-nowrap">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            {etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ? 'Activada' : 'Publicada'}
+            {etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ? 'Activada' : 'Publicado'}
+          </span>
+        ) : estadoFormulario === 'INHABILITADO' ? (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9 12a3 3 0 11-6 0 3 3 0 016 0zm0 0h.01M15 12a3 3 0 11-6 0 3 3 0 016 0zm0 0h.01" />
+            </svg>
+            Inhabilitada
           </span>
         ) : isConfigurado ? (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 whitespace-nowrap">
@@ -157,26 +190,26 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
 
         {!isProgramaCulminado && !etapa.finalizada && <button
           onClick={handleTogglePublicacion}
-          disabled={!isConfigurado || isToggling || (!isProgramaActivo && !isPublicado)}
+          disabled={!isConfigurado || isToggling || (!isProgramaActivo && estadoFormulario === 'BORRADOR')}
           title={
-            !isProgramaActivo && !isPublicado
+            !isProgramaActivo && estadoFormulario === 'BORRADOR'
               ? 'No se puede publicar: el programa no está activo'
               : !isConfigurado
               ? 'Primero configura el formulario'
-              : isPublicado
-              ? etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA'
-                ? 'Inhabilitar: desactivar la gestión documental interna'
-                : 'Inhabilitar: quitar el acceso público al formulario'
-              : etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA'
-              ? 'Activar: habilitar la gestión documental para los funcionarios'
-              : 'Publicar: hacer accesible el formulario al público'
+              : estadoFormulario === 'PUBLICADO'
+              ? 'Deshabilitar: quitar el acceso al formulario'
+              : estadoFormulario === 'INHABILITADO'
+              ? 'Habilitar: restaurar el acceso al formulario'
+              : 'Publicar: hacer accesible el formulario'
           }
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-colors ${
-            !isConfigurado || isToggling || (!isProgramaActivo && !isPublicado)
+            !isConfigurado || isToggling || (!isProgramaActivo && estadoFormulario === 'BORRADOR')
               ? 'opacity-50 cursor-not-allowed bg-gray-400'
-              : isPublicado
-              ? 'bg-amber-500 hover:bg-amber-600 cursor-pointer'
-              : 'bg-green-500 hover:bg-green-600 cursor-pointer'
+              : estadoFormulario === 'PUBLICADO'
+              ? 'bg-red-500 hover:bg-red-600 cursor-pointer'
+              : estadoFormulario === 'INHABILITADO'
+              ? 'bg-green-500 hover:bg-green-600 cursor-pointer'
+              : 'bg-blue-500 hover:bg-blue-600 cursor-pointer'
           }`}
         >
           {isToggling ? (
@@ -184,9 +217,14 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
-          ) : isPublicado ? (
+          ) : estadoFormulario === 'PUBLICADO' ? (
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          ) : estadoFormulario === 'INHABILITADO' ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ) : (
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -194,9 +232,11 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           )}
-          {isToggling ? 'Procesando...' : isPublicado
-            ? (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ? 'Inhabilitar gestión' : 'Inhabilitar formulario')
-            : (etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' ? 'Activar Etapa' : 'Publicar Etapa')}
+          {isToggling ? 'Procesando...' : estadoFormulario === 'PUBLICADO'
+            ? 'Deshabilitar Formulario'
+            : estadoFormulario === 'INHABILITADO'
+            ? 'Habilitar Formulario'
+            : 'Publicar Etapa'}
         </button>}
 
         {/* Terminar Etapa: solo cuando programa ACTIVO, etapa publicada y NO finalizada */}
@@ -243,8 +283,8 @@ export const EtapaCard: React.FC<EtapaCardProps> = ({ etapa, programaId, program
           </button>
         )}
 
-        {/* Sorteo: solo cuando GESTION_DOCUMENTAL_INTERNA está finalizada */}
-        {etapa.finalizada && etapa.modulo_principal === 'GESTION_DOCUMENTAL_INTERNA' && (
+        {/* Sorteo: solo cuando la primera etapa está finalizada */}
+        {etapa.finalizada && etapa.numero_etapa === 1 && (
           <button
             onClick={() => navigate(`/programas/${programaId}/sorteo`)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors cursor-pointer"

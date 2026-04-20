@@ -117,6 +117,7 @@ export interface PostulanteDetalle extends PostulanteRow {
   personas_con_discapacidad_hogar: boolean | null;
   acepta_terminos_condiciones:     boolean;
   campos_incorrectos:              string[];
+  documentos_incorrectos:          string[];
   observaciones_revision:          string;
   documentos_hogar:                DocumentoAdjunto[];
   miembros:                        MiembroHogar[];
@@ -126,6 +127,7 @@ export interface PostulanteDetalle extends PostulanteRow {
 export interface ActualizarPostulanteData {
   estado?:                 string;
   campos_incorrectos?:     string[];
+  documentos_incorrectos?: string[];
   observaciones_revision?: string;
 }
 

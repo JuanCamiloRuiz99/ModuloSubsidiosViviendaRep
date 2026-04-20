@@ -144,7 +144,9 @@ class EtapaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='inhabilitar-formulario')
     def inhabilitar_formulario(self, request, pk=None):
         """
-        Establece el formulario de la etapa como BORRADOR (inhabilita su acceso público).
+        Toggle del estado del formulario:
+        - Si PUBLICADO → cambiar a INHABILITADO
+        - Si INHABILITADO → cambiar a PUBLICADO
         """
         etapa = self.get_object()
         try:
@@ -155,8 +157,21 @@ class EtapaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        formulario.estado = 'BORRADOR'
-        formulario.fecha_publicacion = None
+        # Toggle entre PUBLICADO e INHABILITADO
+        if formulario.estado == 'PUBLICADO':
+            formulario.estado = 'INHABILITADO'
+        elif formulario.estado == 'INHABILITADO':
+            formulario.estado = 'PUBLICADO'
+            # Restaurar fecha de publicación si se reactiva
+            if not formulario.fecha_publicacion:
+                formulario.fecha_publicacion = timezone.now()
+        else:
+            # Si está en BORRADOR, no se puede in/habilitar
+            return Response(
+                {'detail': 'El formulario debe estar publicado para ser inhabilitado.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         formulario.save(update_fields=['estado', 'fecha_publicacion'])
 
         campos = list(
@@ -166,7 +181,7 @@ class EtapaViewSet(viewsets.ModelViewSet):
         )
         return Response({
             'estado': formulario.estado,
-            'fecha_publicacion': None,
+            'fecha_publicacion': formulario.fecha_publicacion,
             'campos': campos,
         })
 
@@ -178,6 +193,19 @@ class EtapaViewSet(viewsets.ModelViewSet):
         Requiere que el formulario ya tenga campos configurados.
         """
         etapa = self.get_object()
+
+        # Validar que el sorteo esté realizado para etapas posteriores a la 1
+        if etapa.numero_etapa > 1:
+            ya_sorteadas = Postulacion.objects.filter(
+                programa_id=etapa.programa_id,
+                estado__in=['BENEFICIADO', 'NO_BENEFICIARIO']
+            ).exists()
+            if not ya_sorteadas:
+                return Response(
+                    {'detail': 'No se puede publicar: el sorteo de beneficiarios debe estar realizado antes de publicar etapas posteriores.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         try:
             formulario = etapa.formulario
         except FormularioEtapa.DoesNotExist:
@@ -512,14 +540,32 @@ class EtapaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='inhabilitar-registro-hogar')
     def inhabilitar_registro_hogar(self, request, pk=None):
         """
-        Despublica el formulario de Registro del Hogar (vuelve a borrador).
+        Toggle del estado de Registro del Hogar:
+        - Si PUBLICADO → cambiar a INHABILITADO
+        - Si INHABILITADO → cambiar a PUBLICADO
         POST /api/etapas/{id}/inhabilitar-registro-hogar/
         """
         etapa = self.get_object()
         config, _ = ConfigRegistroHogar.objects.get_or_create(etapa=etapa)
-        config.publicado = False
-        config.save(update_fields=['publicado', 'fecha_modificacion'])
-        return Response({'publicado': False, 'fecha_modificacion': config.fecha_modificacion})
+        
+        # Toggle: si publicado → inhabilitado; si inhabilitado → publicado
+        if config.publicado:
+            config.publicado = False
+            config.inhabilitado = True
+        elif config.inhabilitado:
+            config.publicado = True
+            config.inhabilitado = False
+        else:
+            # Si no está publicado ni inhabilitado, publicar
+            config.publicado = True
+            config.inhabilitado = False
+        
+        config.save(update_fields=['publicado', 'inhabilitado', 'fecha_modificacion'])
+        return Response({
+            'publicado': config.publicado,
+            'inhabilitado': config.inhabilitado,
+            'fecha_modificacion': config.fecha_modificacion
+        })
 
     # ── Publicación Visita Técnica ─────────────────────────────────────── #
 
@@ -565,6 +611,19 @@ class EtapaViewSet(viewsets.ModelViewSet):
         POST /api/etapas/{id}/publicar-visita-tecnica/
         """
         etapa = self.get_object()
+
+        # Validar que el sorteo esté realizado para etapas posteriores a la 1
+        if etapa.numero_etapa > 1:
+            ya_sorteadas = Postulacion.objects.filter(
+                programa_id=etapa.programa_id,
+                estado__in=['BENEFICIADO', 'NO_BENEFICIARIO']
+            ).exists()
+            if not ya_sorteadas:
+                return Response(
+                    {'detail': 'No se puede publicar: el sorteo de beneficiarios debe estar realizado antes de publicar etapas posteriores.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         config, _ = ConfigVisitaTecnica.objects.get_or_create(etapa=etapa)
         if not config.campos:
             return Response(
@@ -578,14 +637,32 @@ class EtapaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='inhabilitar-visita-tecnica')
     def inhabilitar_visita_tecnica(self, request, pk=None):
         """
-        Inhabilita el acceso de técnicos al formulario de visita técnica.
+        Toggle del estado de Visita Técnica:
+        - Si PUBLICADO → cambiar a INHABILITADO
+        - Si INHABILITADO → cambiar a PUBLICADO
         POST /api/etapas/{id}/inhabilitar-visita-tecnica/
         """
         etapa = self.get_object()
         config, _ = ConfigVisitaTecnica.objects.get_or_create(etapa=etapa)
-        config.publicado = False
-        config.save(update_fields=['publicado', 'fecha_modificacion'])
-        return Response({'publicado': False})
+        
+        # Toggle: si publicado → inhabilitado; si inhabilitado → publicado
+        if config.publicado:
+            config.publicado = False
+            config.inhabilitado = True
+        elif config.inhabilitado:
+            config.publicado = True
+            config.inhabilitado = False
+        else:
+            # Si no está publicado ni inhabilitado, publicar
+            config.publicado = True
+            config.inhabilitado = False
+        
+        config.save(update_fields=['publicado', 'inhabilitado', 'fecha_modificacion'])
+        return Response({
+            'publicado': config.publicado,
+            'inhabilitado': config.inhabilitado,
+            'estado': 'INHABILITADO' if config.inhabilitado else 'PUBLICADO' if config.publicado else 'BORRADOR'
+        })
 
     # ── Publicación Gestión Documental Interna ─────────────────────────── #
 
@@ -631,6 +708,19 @@ class EtapaViewSet(viewsets.ModelViewSet):
         POST /api/etapas/{id}/publicar-gestion-documental/
         """
         etapa = self.get_object()
+
+        # Validar que el sorteo esté realizado para etapas posteriores a la 1
+        if etapa.numero_etapa > 1:
+            ya_sorteadas = Postulacion.objects.filter(
+                programa_id=etapa.programa_id,
+                estado__in=['BENEFICIADO', 'NO_BENEFICIARIO']
+            ).exists()
+            if not ya_sorteadas:
+                return Response(
+                    {'detail': 'No se puede publicar: el sorteo de beneficiarios debe estar realizado antes de publicar etapas posteriores.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         config, _ = ConfigGestionDocumental.objects.get_or_create(etapa=etapa)
         if not config.campos:
             return Response(
@@ -644,14 +734,31 @@ class EtapaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='inhabilitar-gestion-documental')
     def inhabilitar_gestion_documental(self, request, pk=None):
         """
-        Inhabilita el acceso al formulario de gestión documental.
+        Toggle del estado de Gestión Documental:
+        - Si PUBLICADO → cambiar a INHABILITADO
+        - Si INHABILITADO → cambiar a PUBLICADO
         POST /api/etapas/{id}/inhabilitar-gestion-documental/
         """
         etapa = self.get_object()
         config, _ = ConfigGestionDocumental.objects.get_or_create(etapa=etapa)
-        config.publicado = False
-        config.save(update_fields=['publicado', 'fecha_modificacion'])
-        return Response({'publicado': False})
+        
+        # Toggle: si publicado → inhabilitado; si inhabilitado → publicado
+        if config.publicado:
+            config.publicado = False
+            config.inhabilitado = True
+        elif config.inhabilitado:
+            config.publicado = True
+            config.inhabilitado = False
+        else:
+            # Si no está publicado ni inhabilitado, publicar
+            config.publicado = True
+            config.inhabilitado = False
+        
+        config.save(update_fields=['publicado', 'inhabilitado', 'fecha_modificacion'])
+        return Response({
+            'publicado': config.publicado,
+            'inhabilitado': config.inhabilitado
+        })
 
     # ── Terminar / Reactivar Etapa ─────────────────────────────────────── #
 

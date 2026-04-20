@@ -77,6 +77,23 @@ class ProgramaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Validar que para CULMINAR se necesitan las 3 etapas finalizadas
+        if nuevo_estado == 'CULMINADO':
+            from infrastructure.database.models import Etapa
+            etapas = Etapa.objects.filter(programa_id=pk)
+            total_etapas = etapas.count()
+            finalizadas = etapas.filter(finalizada=True).count()
+            if total_etapas < 3:
+                return Response(
+                    {'error': f'Para cerrar el programa se necesitan al menos 3 etapas. Actualmente tiene {total_etapas}.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if finalizadas < total_etapas:
+                return Response(
+                    {'error': f'Todas las etapas deben estar finalizadas. Hay {total_etapas - finalizadas} etapa(s) sin finalizar.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         try:
             resultado = self.app_service.cambiar_estado(int(pk), nuevo_estado)
         except ProgramaNoEncontradoException:

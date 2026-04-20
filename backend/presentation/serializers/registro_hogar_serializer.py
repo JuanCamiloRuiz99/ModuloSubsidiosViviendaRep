@@ -40,11 +40,52 @@ class InfoHogarSubmitSerializer(serializers.Serializer):
     tiene_dependientes              = serializers.BooleanField(required=False, allow_null=True, default=None)
     personas_con_discapacidad_hogar = serializers.BooleanField(required=False, allow_null=True, default=None)
 
-    def validate_acepta_terminos_condiciones(self, value):
+    def validate_departamento(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('El departamento es obligatorio.')
+        return value
+
+    def validate_municipio(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('El municipio es obligatorio.')
+        return value
+
+    def validate_zona(self, value):
         if not value:
-            raise serializers.ValidationError(
-                'Debe aceptar los términos y condiciones para continuar.'
-            )
+            raise serializers.ValidationError('La zona es obligatoria.')
+        return value
+
+    def validate_direccion(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('La dirección es obligatoria.')
+        return value
+
+    def validate_numero_predial(self, value):
+        if value and not value.replace(' ', '').replace('-', '').isdigit():
+            raise serializers.ValidationError('El número predial debe contener solo números, espacios y guiones.')
+        return value
+
+    def validate_matricula_inmobiliaria(self, value):
+        if value and not value.replace(' ', '').replace('-', '').isdigit():
+            raise serializers.ValidationError('La matrícula inmobiliaria debe contener solo números, espacios y guiones.')
+        return value
+
+    def validate_avaluo_catastral(self, value):
+        if value:
+            try:
+                float(value.replace(',', '').replace('.', ''))
+            except ValueError:
+                raise serializers.ValidationError('El avalúo catastral debe ser un número válido.')
+        return value
+
+    def validate_numero_matricula_agua(self, value):
+        if value and not value.replace(' ', '').replace('-', '').isdigit():
+            raise serializers.ValidationError('El número de matrícula de agua debe contener solo números, espacios y guiones.')
+        return value
+
+    def validate_numero_contrato_energia(self, value):
+        if value and not value.replace(' ', '').replace('-', '').isdigit():
+            raise serializers.ValidationError('El número de contrato de energía debe contener solo números, espacios y guiones.')
         return value
 
 

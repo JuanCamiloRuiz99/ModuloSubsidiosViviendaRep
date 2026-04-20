@@ -25,7 +25,7 @@ TRANSICIONES_VALIDAS: dict[EstadoPrograma, list[EstadoPrograma]] = {
     EstadoPrograma.BORRADOR: [EstadoPrograma.ACTIVO],
     EstadoPrograma.ACTIVO: [EstadoPrograma.INHABILITADO, EstadoPrograma.CULMINADO],
     EstadoPrograma.INHABILITADO: [EstadoPrograma.ACTIVO],
-    EstadoPrograma.CULMINADO: [],
+    EstadoPrograma.CULMINADO: [EstadoPrograma.ACTIVO],
 }
 
 

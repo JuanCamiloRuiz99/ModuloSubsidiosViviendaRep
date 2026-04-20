@@ -93,12 +93,14 @@ class FormularioEtapa(models.Model):
     """
     Plantilla de formulario asociada a una etapa de proceso.
     Una etapa tiene exactamente un formulario (UNIQUE en etapa).
-    Estado BORRADOR mientras se construye; PUBLICADO cuando el gestor lo activa.
+    Estado BORRADOR mientras se construye; PUBLICADO cuando el gestor lo activa;
+    INHABILITADO cuando fue publicado pero está deshabilitado.
     """
 
     ESTADOS = [
         ('BORRADOR', 'Borrador'),
         ('PUBLICADO', 'Publicado'),
+        ('INHABILITADO', 'Inhabilitado'),
     ]
 
     etapa = models.OneToOneField(
@@ -296,6 +298,7 @@ class GestionHogarEtapa1(models.Model):
 
     # Revisión interna
     campos_incorrectos   = models.JSONField(default=list, blank=True)
+    documentos_incorrectos = models.JSONField(default=list, blank=True)
     observaciones_revision = models.TextField(blank=True, default='')
 
     numero_radicado = models.CharField(max_length=40, unique=True)
@@ -555,6 +558,10 @@ class ConfigRegistroHogar(models.Model):
         default=False,
         help_text='True cuando el gestor ha publicado el formulario de registro del hogar.',
     )
+    inhabilitado = models.BooleanField(
+        default=False,
+        help_text='True cuando el formulario fue publicado pero después fue inhabilitado.',
+    )
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -587,6 +594,10 @@ class ConfigVisitaTecnica(models.Model):
         default=False,
         help_text='True cuando el gestor ha publicado el formulario de visita técnica.',
     )
+    inhabilitado = models.BooleanField(
+        default=False,
+        help_text='True cuando el formulario fue publicado pero después fue inhabilitado.',
+    )
     fecha_modificacion = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -618,6 +629,10 @@ class ConfigGestionDocumental(models.Model):
     publicado = models.BooleanField(
         default=False,
         help_text='True cuando el gestor ha publicado el formulario de gestión documental.',
+    )
+    inhabilitado = models.BooleanField(
+        default=False,
+        help_text='True cuando el formulario fue publicado pero después fue inhabilitado.',
     )
     fecha_modificacion = models.DateTimeField(auto_now=True)
 

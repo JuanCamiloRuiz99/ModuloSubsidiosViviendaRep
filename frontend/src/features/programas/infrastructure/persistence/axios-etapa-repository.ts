@@ -20,10 +20,13 @@ export interface EtapaData {
   fecha_modificacion: string | null;
   activo_logico: boolean;
   formulario_configurado: boolean;
-  formulario_estado: 'BORRADOR' | 'PUBLICADO' | null;
+  formulario_estado: 'BORRADOR' | 'PUBLICADO' | 'INHABILITADO' | null;
   registro_hogar_publicado: boolean;
+  registro_hogar_inhabilitado: boolean;
   visita_tecnica_publicado: boolean;
+  visita_tecnica_inhabilitado: boolean;
   gestion_documental_publicado: boolean;
+  gestion_documental_inhabilitado: boolean;
   registro_hogar_guardado: boolean;
   visita_tecnica_guardado: boolean;
   gestion_documental_guardado: boolean;

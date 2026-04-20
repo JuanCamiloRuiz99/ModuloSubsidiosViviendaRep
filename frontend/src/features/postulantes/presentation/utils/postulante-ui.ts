@@ -34,7 +34,6 @@ export const ESTADOS_FILTRO = [
   { value: 'DOCUMENTOS_INCOMPLETOS', label: 'Documentos incompletos' },
   { value: 'DOCUMENTOS_CARGADOS',    label: 'Documentos cargados' },
   { value: 'BENEFICIADO',        label: 'Beneficiado' },
-  { value: 'NO_BENEFICIARIO',    label: 'No beneficiario' },
   { value: 'APROBADA',           label: 'Aprobada' },
   { value: 'RECHAZADA',          label: 'Rechazada' },
 ] as const;

@@ -12,8 +12,11 @@ class EtapaSerializer(serializers.ModelSerializer):
     formulario_configurado = serializers.SerializerMethodField()
     formulario_estado = serializers.SerializerMethodField()
     registro_hogar_publicado = serializers.SerializerMethodField()
+    registro_hogar_inhabilitado = serializers.SerializerMethodField()
     visita_tecnica_publicado = serializers.SerializerMethodField()
+    visita_tecnica_inhabilitado = serializers.SerializerMethodField()
     gestion_documental_publicado = serializers.SerializerMethodField()
+    gestion_documental_inhabilitado = serializers.SerializerMethodField()
     registro_hogar_guardado = serializers.SerializerMethodField()
     visita_tecnica_guardado = serializers.SerializerMethodField()
     gestion_documental_guardado = serializers.SerializerMethodField()
@@ -33,8 +36,11 @@ class EtapaSerializer(serializers.ModelSerializer):
             'formulario_configurado',
             'formulario_estado',
             'registro_hogar_publicado',
+            'registro_hogar_inhabilitado',
             'visita_tecnica_publicado',
+            'visita_tecnica_inhabilitado',
             'gestion_documental_publicado',
+            'gestion_documental_inhabilitado',
             'registro_hogar_guardado',
             'visita_tecnica_guardado',
             'gestion_documental_guardado',
@@ -61,15 +67,33 @@ class EtapaSerializer(serializers.ModelSerializer):
         except ConfigRegistroHogar.DoesNotExist:
             return False
 
+    def get_registro_hogar_inhabilitado(self, obj):
+        try:
+            return obj.config_registro_hogar.inhabilitado
+        except ConfigRegistroHogar.DoesNotExist:
+            return False
+
     def get_visita_tecnica_publicado(self, obj):
         try:
             return obj.config_visita_tecnica.publicado
         except ConfigVisitaTecnica.DoesNotExist:
             return False
 
+    def get_visita_tecnica_inhabilitado(self, obj):
+        try:
+            return obj.config_visita_tecnica.inhabilitado
+        except ConfigVisitaTecnica.DoesNotExist:
+            return False
+
     def get_gestion_documental_publicado(self, obj):
         try:
             return obj.config_gestion_documental.publicado
+        except ConfigGestionDocumental.DoesNotExist:
+            return False
+
+    def get_gestion_documental_inhabilitado(self, obj):
+        try:
+            return obj.config_gestion_documental.inhabilitado
         except ConfigGestionDocumental.DoesNotExist:
             return False
 

@@ -67,7 +67,7 @@ export const VisitasPage: React.FC = () => {
   );
 
   const { postulantes, isLoading, error, refetch } = usePostulantes(
-    'APROBADA',
+    'BENEFICIADO',
     selectedProgramaId || undefined,
   );
 
@@ -85,8 +85,8 @@ export const VisitasPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   // ── Estado pestaña Gestión ──
-  const [numClusters, setNumClusters]               = useState(3);
-  const [sliderValue, setSliderValue]               = useState(3);
+  const [numClusters, setNumClusters]               = useState(0);
+  const [sliderValue, setSliderValue]               = useState(0);
   const [clusters, setClusters]                     = useState<ClusterGroup[]>([]);
   const [tecnicoAssignments, setTecnicoAssignments] = useState<Record<number, string>>({});
   const [expandedGroup, setExpandedGroup]           = useState<number | null>(null);
@@ -113,6 +113,8 @@ export const VisitasPage: React.FC = () => {
     setMarkers([]);
     setSelectedId(null);
     setClusters([]);
+    setNumClusters(0);
+    setSliderValue(0);
     setTecnicoAssignments({});
     setCreateResult(null);
     setExpandedGroup(null);
@@ -230,7 +232,7 @@ export const VisitasPage: React.FC = () => {
       return;
     }
 
-    const k = Math.min(numClusters, geocoded.length);
+    const k = Math.max(1, Math.min(numClusters || 1, geocoded.length));
     const result = kmeans(geocoded, k);
     const groups: ClusterGroup[] = result.groups.map((items, i) => ({
       index: i,
@@ -365,8 +367,14 @@ export const VisitasPage: React.FC = () => {
   const totalUbicadas   = markers.filter(m => m.geocoded).length;
   const totalNoUbicadas = markers.filter(m => !m.geocoded).length;
   const asignadas       = clusters.filter(c => c.tecnicoId).reduce((s, c) => s + c.markers.length, 0);
-  const maxClusters     = Math.max(1, Math.min(totalUbicadas || 1, 15));
-
+  const maxClusters     = markers.length > 0 ? Math.max(1, Math.min(totalUbicadas || 1, 15)) : 0;
+  useEffect(() => {
+    if (markers.length > 0 && numClusters === 0 && sliderValue === 0) {
+      const defaultCount = Math.min(3, maxClusters || 1);
+      setNumClusters(defaultCount);
+      setSliderValue(defaultCount);
+    }
+  }, [markers.length, maxClusters, numClusters, sliderValue]);
   // ══════════════════════════════════════════════════════════════════════════ //
 
   return (
@@ -519,17 +527,17 @@ export const VisitasPage: React.FC = () => {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'gestion' && (
         <>
-          {totalUbicadas === 0 && !isGeocoding ? (
+          {clusters.length === 0 && !isGeocoding ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 flex flex-col items-center justify-center text-gray-400">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
               <p className="text-sm font-medium text-gray-500">
-                {totalAprobadas === 0 ? 'No hay postulaciones aprobadas en este programa' : 'No se pudieron geolocalizar las direcciones'}
+                {totalAprobadas === 0 ? 'No hay postulaciones aprobadas en este programa' : 'No hay grupos de visitas disponibles para mostrar'}
               </p>
             </div>
-          ) : totalUbicadas > 0 && (
+          ) : (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               {/* Encabezado */}
               <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
@@ -571,7 +579,7 @@ export const VisitasPage: React.FC = () => {
                 <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Número de grupos:</span>
                 <input
                   type="range"
-                  min={1}
+                  min={0}
                   max={maxClusters}
                   value={sliderValue}
                   onChange={e => setSliderValue(Number(e.target.value))}

@@ -79,7 +79,6 @@ export const documentoProcesoInternoRepository = {
     const { data } = await apiService.post<DocumentoProcesoInternoData>(
       'documentos-proceso-interno/subir/',
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data;
   },

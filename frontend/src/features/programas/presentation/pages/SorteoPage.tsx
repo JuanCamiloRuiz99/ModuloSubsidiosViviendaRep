@@ -1,8 +1,9 @@
 /**
  * SorteoPage – Sorteo aleatorio de beneficiarios para un programa.
  *
- * Muestra las postulaciones con DOCUMENTOS_CARGADOS y permite ejecutar un
+ * Muestra las postulaciones con estado APROBADA y permite ejecutar un
  * sorteo aleatorio ÚNICO e IRREVERSIBLE para asignar BENEFICIADO / NO_BENEFICIARIO.
+ * El sorteo se habilita cuando la Etapa 1 está finalizada.
  */
 
 import React, { useCallback, useState } from 'react';
@@ -59,8 +60,8 @@ export const SorteoPage: React.FC = () => {
   // ── Queries ─────────────────────────────────────────────────────────── //
 
   const { data: etapas = [], isLoading: loadingEtapas } = useEtapas(programaId!);
-  const etapasAbiertas = etapas.filter((e: any) => !e.finalizada);
-  const todasCerradas = etapas.length > 0 && etapasAbiertas.length === 0;
+  const etapa1 = etapas.find((e: any) => e.numero_etapa === 1);
+  const etapa1Finalizada = etapa1?.finalizada === true;
 
   const { data: estado, isLoading: loadingEstado } = useQuery<SorteoEstado>({
     queryKey: ['sorteo-estado', programaId],
@@ -77,7 +78,7 @@ export const SorteoPage: React.FC = () => {
       apiService
         .get<Elegible[]>('postulaciones/sorteo/elegibles/', { params: { programa_id: programaId } })
         .then(r => r.data),
-    enabled: !!programaId && estado !== undefined && !estado.sorteo_realizado,
+    enabled: !!programaId && estado !== undefined && !estado.sorteo_realizado && etapa1Finalizada,
   });
 
   const { data: resultadosPrevios, isLoading: loadingResultados } = useQuery<SorteoResultado>({
@@ -170,8 +171,8 @@ export const SorteoPage: React.FC = () => {
         </div>
       )}
 
-      {/* ═══ Etapas no cerradas ═══ */}
-      {!loadingEstado && !loadingEtapas && !sorteoYaHecho && !todasCerradas && etapas.length > 0 && (
+      {/* ═══ Etapa 1 no finalizada ═══ */}
+      {!loadingEstado && !loadingEtapas && !sorteoYaHecho && !etapa1Finalizada && etapas.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
@@ -181,25 +182,17 @@ export const SorteoPage: React.FC = () => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-amber-800 mb-1">No se puede ejecutar el sorteo</h2>
-              <p className="text-sm text-amber-700 mb-3">
-                Para ejecutar el sorteo, <strong>todas las etapas deben estar cerradas (finalizadas)</strong>.
-                Actualmente hay <strong>{etapasAbiertas.length}</strong> etapa(s) sin finalizar:
+              <p className="text-sm text-amber-700">
+                Para ejecutar el sorteo, la <strong>Etapa 1 (Registro del Hogar)</strong> debe estar finalizada.
+                Una vez finalizada, podrá sortear entre las postulaciones con estado <strong>Aprobada</strong>.
               </p>
-              <ul className="text-sm text-amber-700 space-y-1">
-                {etapasAbiertas.map((e: any) => (
-                  <li key={e.id} className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
-                    Etapa {e.numero_etapa}: {e.modulo_principal?.replace(/_/g, ' ')}
-                  </li>
-                ))}
-              </ul>
             </div>
           </div>
         </div>
       )}
 
       {/* ═══ Sin elegibles ═══ */}
-      {!loadingEstado && !loadingElegibles && !loadingEtapas && !sorteoYaHecho && todasCerradas && totalElegibles === 0 && (
+      {!loadingEstado && !loadingElegibles && !loadingEtapas && !sorteoYaHecho && etapa1Finalizada && totalElegibles === 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
           <div className="flex justify-center mb-3">
             <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
@@ -210,14 +203,14 @@ export const SorteoPage: React.FC = () => {
           </div>
           <h2 className="text-lg font-bold text-amber-800 mb-1">Sin postulaciones elegibles</h2>
           <p className="text-sm text-amber-700">
-            No hay postulaciones con <strong>Documentos Cargados</strong> para este programa.
-            Asegúrese de que todas las etapas previas estén completas.
+            No hay postulaciones con estado <strong>Aprobada</strong> para este programa.
+            Asegúrese de que la revisión de la Etapa 1 esté completa.
           </p>
         </div>
       )}
 
       {/* ═══ Panel de sorteo (antes de ejecutar) ═══ */}
-      {!loadingEstado && !loadingElegibles && !loadingEtapas && !sorteoYaHecho && todasCerradas && totalElegibles > 0 && (
+      {!loadingEstado && !loadingElegibles && !loadingEtapas && !sorteoYaHecho && etapa1Finalizada && totalElegibles > 0 && (
         <>
           {/* Advertencia */}
           <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-800 flex items-start gap-3">
@@ -228,8 +221,8 @@ export const SorteoPage: React.FC = () => {
               <p className="font-semibold">Advertencia: el sorteo es irreversible</p>
               <p className="mt-1 text-xs text-red-700">
                 Una vez ejecutado, el sorteo <strong>no se puede deshacer ni repetir</strong>. Se seleccionarán aleatoriamente
-                los beneficiarios del total de postulaciones elegibles. Asegúrese de que todas las postulaciones tengan
-                sus documentos completos antes de proceder.
+                los beneficiarios del total de postulaciones aprobadas. Asegúrese de que la Etapa 1 esté
+                completa antes de proceder.
               </p>
             </div>
           </div>
@@ -265,7 +258,7 @@ export const SorteoPage: React.FC = () => {
               <h3 className="text-sm font-semibold text-gray-800">
                 Postulaciones elegibles ({totalElegibles})
               </h3>
-              <span className="text-xs text-gray-400">Estado: Documentos cargados</span>
+              <span className="text-xs text-gray-400">Estado: Aprobada</span>
             </div>
             <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
               {elegibles.map((e, i) => (
@@ -280,8 +273,8 @@ export const SorteoPage: React.FC = () => {
                       Rad. {e.numero_radicado}
                     </p>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-cyan-100 text-cyan-700 font-medium">
-                    Documentos cargados
+                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700 font-medium">
+                    Aprobada
                   </span>
                 </div>
               ))}

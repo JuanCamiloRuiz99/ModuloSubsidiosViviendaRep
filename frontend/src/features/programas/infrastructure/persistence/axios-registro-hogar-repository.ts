@@ -79,7 +79,6 @@ export const registroHogarRepository = {
     await apiService.post(
       `postulaciones/${postulacionId}/documentos-hogar/`,
       form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
   },
 
@@ -96,7 +95,6 @@ export const registroHogarRepository = {
     await apiService.post(
       `miembros-hogar/${miembroId}/documentos/`,
       form,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
   },
 

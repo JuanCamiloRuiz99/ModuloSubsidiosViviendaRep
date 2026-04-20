@@ -63,9 +63,9 @@ const estadoConfig: Record<string, {
     border: 'border-l-4 border-indigo-500',
     badge: 'bg-indigo-100 text-indigo-700',
     label: 'Culminado',
-    accionLabel: '',
-    accionEstado: '',
-    accionClass: 'hidden',
+    accionLabel: 'Reabrir programa',
+    accionEstado: EstadoPrograma.ACTIVO,
+    accionClass: 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200',
   },
 };
 
@@ -144,29 +144,49 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
       {/* Acciones */}
       {isCulminado ? (
         <>
-          <div className="px-5 py-3 border-t border-gray-200">
+          <div className="px-5 py-3 border-t border-gray-200 flex items-center gap-2">
             <button
               onClick={() => navigate(`/programas/${programa.id}/sorteo`)}
-              className="w-full text-sm font-medium text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-md border border-indigo-200 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 text-sm font-medium text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md border border-indigo-200 transition-colors flex items-center justify-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Ver beneficiarios
             </button>
-          </div>
-          <div className="px-5 pb-4">
             <button
               onClick={() => {
                 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
                 window.open(`${API_BASE}/postulaciones/sorteo/descargar/?programa_id=${programa.id}`, '_blank');
               }}
-              className="w-full text-sm font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-md border border-emerald-200 transition-colors flex items-center justify-center gap-2"
+              className="flex-1 text-sm font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-md border border-emerald-200 transition-colors flex items-center justify-center gap-2"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Descargar lista
+              Descargar
+            </button>
+          </div>
+          <div className="px-5 pb-4 flex items-center gap-2">
+            <button
+              onClick={() => onCambiarEstado?.(programa.id, EstadoPrograma.ACTIVO)}
+              disabled={isEstadoPending}
+              className={`flex-1 text-sm font-medium px-3 py-2 rounded-md transition-colors flex items-center justify-center gap-2 ${
+                isEstadoPending
+                  ? 'opacity-60 cursor-not-allowed bg-gray-100 text-gray-400 border border-gray-200'
+                  : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+              }`}
+            >
+              {isEstadoPending ? 'Procesando...' : 'Reabrir programa'}
+            </button>
+            <button
+              onClick={() => onGestionarEtapas?.(programa)}
+              className="flex-1 text-sm font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md border border-blue-200 transition-colors flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Etapas
             </button>
           </div>
         </>
@@ -217,17 +237,31 @@ export const ProgramaCard: React.FC<ProgramaCardProps> = ({
         </button>
       </div>
 
-      {/* Gestionar Etapas */}
-      <div className="px-5 pb-4">
+      {/* Gestionar Etapas + Cerrar programa */}
+      <div className="px-5 pb-4 flex items-center gap-2">
         <button
           onClick={() => onGestionarEtapas?.(programa)}
-          className="w-full text-sm font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md border border-blue-200 transition-colors flex items-center justify-center gap-2"
+          className="flex-1 text-sm font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-md border border-blue-200 transition-colors flex items-center justify-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           Gestionar Etapas
         </button>
+        {programa.estado === EstadoPrograma.ACTIVO && (
+          <button
+            onClick={() => onCambiarEstado?.(programa.id, EstadoPrograma.CULMINADO)}
+            disabled={isEstadoPending}
+            title="Cerrar el programa. Requiere al menos 3 etapas finalizadas."
+            className={`flex-1 text-sm font-medium px-3 py-2 rounded-md transition-colors flex items-center justify-center gap-2 ${
+              isEstadoPending
+                ? 'opacity-60 cursor-not-allowed bg-gray-100 text-gray-400 border border-gray-200'
+                : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200'
+            }`}
+          >
+            {isEstadoPending ? 'Procesando...' : 'Cerrar programa'}
+          </button>
+        )}
       </div>
         </>
       )}

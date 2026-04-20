@@ -112,7 +112,7 @@ function getConditionalDocs(miembro: MiembroHogarForm): Array<{ value: TipoDocum
   const docs: Array<{ value: TipoDocumentoMiembro; label: string }> = [];
   if (miembro.pertenece_sisben)
     docs.push({ value: 'CERTIFICADO_SISBEN', label: 'Certificado SISBEN' });
-  if (miembro.tiene_discapacidad)
+  if (miembro.certificado_discapacidad)
     docs.push({ value: 'CERTIFICADO_DISCAPACIDAD', label: 'Certificado de discapacidad' });
   if (miembro.es_victima_conflicto || miembro.es_desplazado)
     docs.push({ value: 'CERTIFICADO_VICTIMA', label: 'Certificado registro de víctima (RUV)' });

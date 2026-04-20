@@ -70,7 +70,7 @@ async function geocode(postulante: PostulanteRow): Promise<MarkerData | null> {
 }
 
 export const VisitaTecnicaMapaModal: React.FC<Props> = ({ isOpen, onClose }) => {
-  const { postulantes, isLoading, error } = usePostulantes('APROBADA');
+  const { postulantes, isLoading, error } = usePostulantes('BENEFICIADO');
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geoError, setGeoError] = useState('');

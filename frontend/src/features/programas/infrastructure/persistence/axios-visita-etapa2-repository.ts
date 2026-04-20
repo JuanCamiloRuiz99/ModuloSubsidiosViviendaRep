@@ -149,7 +149,6 @@ export const visitaEtapa2Repository = {
     const { data } = await apiService.post<DocumentoVisitaE2>(
       `${BASE}${visitaId}/documentos/`,
       formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } },
     );
     return data;
   },

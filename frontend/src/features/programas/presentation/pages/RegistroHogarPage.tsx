@@ -70,7 +70,7 @@ function validarPaso3(miembros: MiembroHogarForm[]): string | null {
     if (!reversoOk) return `Falta la foto de la cédula (reverso) de ${nombre}.`;
     if (m.pertenece_sisben && !m.documentos.find(d => d.tipo_documento === 'CERTIFICADO_SISBEN')?.file)
       return `Falta el certificado SISBEN de ${nombre}.`;
-    if (m.tiene_discapacidad && !m.documentos.find(d => d.tipo_documento === 'CERTIFICADO_DISCAPACIDAD')?.file)
+    if (m.certificado_discapacidad && !m.documentos.find(d => d.tipo_documento === 'CERTIFICADO_DISCAPACIDAD')?.file)
       return `Falta el certificado de discapacidad de ${nombre}.`;
     if ((m.es_victima_conflicto || m.es_desplazado) && !m.documentos.find(d => d.tipo_documento === 'CERTIFICADO_VICTIMA')?.file)
       return `Falta el certificado de víctima (RUV) de ${nombre}.`;
@@ -206,9 +206,14 @@ const ResumenCard: React.FC<{
   miembros: MiembroHogarForm[];
   documentosHogar: DocumentoHogarEntry[];
 }> = ({ infoHogar, miembros, documentosHogar }) => {
-  const docsConArchivo = documentosHogar.filter(d => d.file !== null).length;
-  const docsRequeridos = TIPOS_DOCUMENTO_HOGAR.length;
-  const docsRequeridosCargados = TIPOS_DOCUMENTO_HOGAR
+  const tiposHogarVisibles = TIPOS_DOCUMENTO_HOGAR.filter(
+    t => t.value !== 'ESCRITURA_PUBLICA_PREDIO' || infoHogar.es_propietario !== false,
+  );
+  const docsConArchivo = tiposHogarVisibles.filter(
+    t => documentosHogar.find(d => d.tipo_documento === t.value)?.file !== null,
+  ).length;
+  const docsRequeridos = tiposHogarVisibles.length;
+  const docsRequeridosCargados = tiposHogarVisibles
     .filter(t => documentosHogar.find(d => d.tipo_documento === t.value)?.file !== null)
     .length;
   const docsOkMiembros = miembros.reduce((acc, m) => acc + m.documentos.filter(d => d.file !== null).length, 0);

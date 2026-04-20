@@ -73,10 +73,6 @@ const PERCEPCION_SEGURIDAD = [
 ];
 
 const TIPO_DOCUMENTO_VISITA = [
-  { value: 'RECIBO_PREDIAL', label: 'Recibo predial' },
-  { value: 'CERTIFICADO_TRADICION_LIBERTAD', label: 'Certificado de tradición y libertad' },
-  { value: 'ESCRITURA_PUBLICA', label: 'Escritura pública' },
-  { value: 'CONTRATO_ARRENDAMIENTO', label: 'Contrato de arrendamiento' },
   { value: 'RECIBO_AGUA', label: 'Recibo de agua' },
   { value: 'RECIBO_ENERGIA', label: 'Recibo de energía' },
   { value: 'RECIBO_GAS', label: 'Recibo de gas' },

@@ -142,31 +142,6 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Acceso rápido por roles (solo desarrollo) */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-5 mt-5">
-          <p className="text-alcaldia-yellow-light text-xs font-semibold uppercase tracking-wider mb-3 text-center">
-            Acceso rápido por rol
-          </p>
-          <div className="flex flex-col gap-2">
-            {[
-              { label: 'Administrador', correo: 'admin@alcaldia.gov.co', password: 'Admin123*', icon: '🛡️', color: 'from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800' },
-              { label: 'Funcionario', correo: 'funcionario@alcaldia.gov.co', password: 'Func123*', icon: '🏢', color: 'from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800' },
-              { label: 'Técnico Visitante', correo: 'tecnico@alcaldia.gov.co', password: 'Tec123*', icon: '🔧', color: 'from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800' },
-            ].map((r) => (
-              <button
-                key={r.correo}
-                type="button"
-                disabled={isLoading}
-                onClick={() => login({ correo: r.correo, password: r.password })}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r ${r.color} transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm`}
-              >
-                <span className="text-lg">{r.icon}</span>
-                <span>Entrar como {r.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Footer */}
         <p className="text-center text-alcaldia-yellow-light/60 text-xs mt-6">
           © {new Date().getFullYear()} Alcaldía de Popayán — Módulo de Subsidios de Vivienda

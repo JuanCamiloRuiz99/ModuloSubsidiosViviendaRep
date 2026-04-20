@@ -5,6 +5,8 @@ Endpoints:
   POST   /api/visitas/crear/              → crear visita desde el panel
   GET    /api/visitas/listar/             → listar visitas (filtros: inspectorId, programaId, postulacionId)
   GET    /api/visitas/{id}/obtener/       → detalle de visita
+  POST   /api/visitas/programar/          → programar fecha de visita
+  POST   /api/visitas/realizar/           → marcar visita como realizada
   DELETE /api/visitas/{id}/               → borrado lógico
 """
 
@@ -226,8 +228,54 @@ class VisitaViewSet(viewsets.ViewSet):
 
         # Actualizar estado de la postulación a VISITA_PROGRAMADA
         postulacion = visita.postulacion
-        if postulacion.estado in ('VISITA_ASIGNADA', 'VISITA_PENDIENTE'):
+        if postulacion.estado not in ('VISITA_PROGRAMADA', 'VISITA_REALIZADA', 'RECHAZADA'):
             postulacion.estado = 'VISITA_PROGRAMADA'
+            postulacion.fecha_modificacion = now()
+            postulacion.save(update_fields=['estado', 'fecha_modificacion'])
+
+        visita.refresh_from_db()
+        return Response(_visita_to_ddd(visita))
+
+    # ── Realizar visita (visitante marca como realizada) ─────────────────── #
+
+    @action(detail=False, methods=['post'], url_path='realizar')
+    def realizar(self, request):
+        """El visitante marca la visita como realizada."""
+        visita_id = request.data.get('visitaId')
+
+        if not visita_id:
+            return Response(
+                {'detail': 'visitaId es requerido.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            visita = Visita.objects.select_related(
+                'postulacion', 'postulacion__programa', 'encuestador',
+            ).get(pk=visita_id, activo_logico=True)
+        except Visita.DoesNotExist:
+            return Response(
+                {'detail': 'Visita no encontrada.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if visita.estado_visita != 'PROGRAMADA':
+            return Response(
+                {'detail': f'No se puede realizar una visita en estado {visita.estado_visita}.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        visita.estado_visita = 'REALIZADA'
+        visita.fecha_realizacion = now()
+        visita.fecha_modificacion = now()
+        visita.save(update_fields=[
+            'estado_visita', 'fecha_realizacion', 'fecha_modificacion',
+        ])
+
+        # Actualizar estado de la postulación a VISITA_REALIZADA
+        postulacion = visita.postulacion
+        if postulacion.estado not in ('VISITA_REALIZADA', 'APROBADA', 'RECHAZADA'):
+            postulacion.estado = 'VISITA_REALIZADA'
             postulacion.fecha_modificacion = now()
             postulacion.save(update_fields=['estado', 'fecha_modificacion'])
 

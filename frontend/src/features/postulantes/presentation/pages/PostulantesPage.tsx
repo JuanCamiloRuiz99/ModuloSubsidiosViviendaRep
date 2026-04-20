@@ -90,6 +90,7 @@ export const PostulantesPage: React.FC = () => {
   const filas = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     return postulantes.filter(row => {
+      if (row.estado === 'NO_BENEFICIARIO') return false;
       const coincideEstado = !filtroEstado || row.estado === filtroEstado;
       if (!coincideEstado) return false;
       if (!q) return true;

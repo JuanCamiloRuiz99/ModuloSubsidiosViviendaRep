@@ -53,9 +53,9 @@ export const GestionDocumentalInternaPage: React.FC = () => {
     setBusqueda('');
   };
 
-  // ── Paso 2: Postulaciones con estado VISITA_REALIZADA o DOCUMENTOS_INCOMPLETOS ── //
+  // ── Paso 2: Postulaciones con estado VISITA_REALIZADA, DOCUMENTOS_INCOMPLETOS o DOCUMENTOS_CARGADOS ── //
   const { postulantes, isLoading: loadingPostulantes } = usePostulantes(
-    'VISITA_REALIZADA,DOCUMENTOS_INCOMPLETOS',
+    'VISITA_REALIZADA,DOCUMENTOS_INCOMPLETOS,DOCUMENTOS_CARGADOS',
     selectedProgramaId || undefined,
   );
   const postulacionesValidas = useMemo(

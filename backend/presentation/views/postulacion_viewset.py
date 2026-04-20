@@ -37,7 +37,9 @@ from infrastructure.database.usuarios_models import UsuarioSistema
 
 
 class ConsultaPublicaThrottle(AnonRateThrottle):
-    rate = '5/minute'
+    # Límite aumentado para que la consulta pública de estado no regule tan rápido.
+    # Esto permite consultas repetidas desde la misma IP sin bloquear al usuario.
+    rate = '100/minute'
 
 
 TIPO_DOCUMENTO_LABELS = {
@@ -419,6 +421,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             'acepta_terminos_condiciones':      g.acepta_terminos_condiciones,
             # Revisión interna
             'campos_incorrectos':    g.campos_incorrectos,
+            'documentos_incorrectos': g.documentos_incorrectos,
             'observaciones_revision': g.observaciones_revision,
             # Miembros
             'miembros': miembros_data,
@@ -436,8 +439,8 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 y ajusta el estado automáticamente.
                 Reglas de estado:
                 - Si viene estado=RECHAZADA → se rechaza con la observación enviada.
-                - Si hay campos_incorrectos → SUBSANACION.
-                - Si no hay campos_incorrectos → APROBADA.
+                - Si hay campos_incorrectos O documentos_incorrectos → SUBSANACION.
+                - Si no hay ninguno incorrecto → APROBADA.
                 PATCH /api/postulaciones/registro-hogar/{pk}/actualizar/
         """
         try:
@@ -454,14 +457,27 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         campos_incorrectos = data.get('campos_incorrectos', [])
         if campos_incorrectos is None:
             campos_incorrectos = []
+        documentos_incorrectos = data.get('documentos_incorrectos', [])
+        if documentos_incorrectos is None:
+            documentos_incorrectos = []
         observaciones = data.get('observaciones_revision', '')
+
+        # DEBUG: Log para verificar qué llega del frontend
+        print(f'[DEBUG BACKEND] actualizar_registro_hogar - ID: {pk}')
+        print(f'[DEBUG BACKEND] campos_incorrectos: {campos_incorrectos} (tipo: {type(campos_incorrectos)})')
+        print(f'[DEBUG BACKEND] documentos_incorrectos: {documentos_incorrectos} (tipo: {type(documentos_incorrectos)})')
+        print(f'[DEBUG BACKEND] estado_enviado: {data.get("estado")}')
 
         # Ajuste de estado automático
         nuevo_estado = data.get('estado')
         if nuevo_estado == 'RECHAZADA':
             estado_final = 'RECHAZADA'
         else:
-            estado_final = 'SUBSANACION' if campos_incorrectos else 'APROBADA'
+            # Considerar tanto campos_incorrectos como documentos_incorrectos
+            tiene_incorrectos = bool(campos_incorrectos or documentos_incorrectos)
+            estado_final = 'SUBSANACION' if tiene_incorrectos else 'APROBADA'
+
+        print(f'[DEBUG BACKEND] estado_final_calculado: {estado_final} (campos: {len(campos_incorrectos)}, docs: {len(documentos_incorrectos)})')
 
         if estado_final not in dict(Postulacion.ESTADOS):
             return Response(
@@ -484,14 +500,46 @@ class PostulacionViewSet(viewsets.GenericViewSet):
 
         with transaction.atomic():
             g.campos_incorrectos     = campos_incorrectos
+            g.documentos_incorrectos = documentos_incorrectos
             g.observaciones_revision = observaciones
-            g.save(update_fields=['campos_incorrectos', 'observaciones_revision'])
+            g.save(update_fields=['campos_incorrectos', 'documentos_incorrectos', 'observaciones_revision'])
 
             if g.postulacion:
                 g.postulacion.estado = estado_final
                 g.postulacion.save(update_fields=['estado'])
 
+        print(f'[DEBUG BACKEND] GUARDADO - campos_incorrectos: {g.campos_incorrectos}, estado_postulacion: {g.postulacion.estado if g.postulacion else None}')
+
         return Response({'detail': 'Actualizado correctamente.'})
+
+
+    @action(detail=False, methods=['patch'], url_path='editar-completo')
+    def editar_registro_hogar_completo(self, request, pk=None):
+        """
+        Permite editar todos los campos del hogar (no solo revisión interna).
+        PATCH /api/postulaciones/registro-hogar/{pk}/editar-completo/
+        Body: campos del InfoHogarSubmitSerializer
+        """
+        try:
+            g = (
+                GestionHogarEtapa1.objects
+                .select_related('postulacion')
+                .get(pk=pk)
+            )
+        except GestionHogarEtapa1.DoesNotExist:
+            return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = InfoHogarSubmitSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Actualizar los campos del modelo
+        for field, value in serializer.validated_data.items():
+            setattr(g, field, value)
+
+        g.save()
+
+        return Response({'detail': 'Datos del hogar actualizados correctamente.'})
 
 
     @action(detail=True, methods=['post'], url_path='documentos-hogar',
@@ -981,7 +1029,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         Consulta el estado del sorteo para un programa.
         GET /api/postulaciones/sorteo/estado/?programa_id=6
         Retorna:
-          - elegibles: cantidad de postulaciones con DOCUMENTOS_CARGADOS
+          - elegibles: cantidad de postulaciones con APROBADA
           - ya_sorteadas: cantidad con BENEFICIADO o NO_BENEFICIARIO
           - sorteo_realizado: bool
         """
@@ -990,7 +1038,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             return Response({'detail': 'Se requiere programa_id.'}, status=status.HTTP_400_BAD_REQUEST)
 
         elegibles = Postulacion.objects.filter(
-            programa_id=programa_id, estado='DOCUMENTOS_CARGADOS',
+            programa_id=programa_id, estado='APROBADA',
         ).count()
 
         ya_sorteadas = Postulacion.objects.filter(
@@ -1006,7 +1054,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['get'], url_path='sorteo/elegibles')
     def sorteo_elegibles(self, request):
         """
-        Lista las postulaciones elegibles (DOCUMENTOS_CARGADOS) para un programa.
+        Lista las postulaciones elegibles (APROBADA) para un programa.
         GET /api/postulaciones/sorteo/elegibles/?programa_id=6
         """
         programa_id = request.query_params.get('programa_id')
@@ -1015,7 +1063,7 @@ class PostulacionViewSet(viewsets.GenericViewSet):
 
         postulaciones = (
             Postulacion.objects
-            .filter(programa_id=programa_id, estado='DOCUMENTOS_CARGADOS')
+            .filter(programa_id=programa_id, estado='APROBADA')
             .select_related('programa')
             .order_by('id')
         )
@@ -1188,11 +1236,11 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             )
 
         with transaction.atomic():
-            # Verificar que todas las etapas estén cerradas
-            etapas_abiertas = Etapa.objects.filter(programa_id=programa_id, finalizada=False).count()
-            if etapas_abiertas > 0:
+            # Verificar que la etapa 1 esté finalizada
+            etapa1 = Etapa.objects.filter(programa_id=programa_id, numero_etapa=1).first()
+            if not etapa1 or not etapa1.finalizada:
                 return Response(
-                    {'detail': f'No se puede ejecutar el sorteo: hay {etapas_abiertas} etapa(s) sin finalizar. Todas las etapas deben estar cerradas.'},
+                    {'detail': 'No se puede ejecutar el sorteo: la Etapa 1 debe estar finalizada.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -1209,17 +1257,17 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                     status=status.HTTP_409_CONFLICT,
                 )
 
-            # Obtener elegibles con lock
+            # Obtener elegibles con lock (postulaciones APROBADA)
             elegibles = list(
                 Postulacion.objects
                 .select_for_update()
-                .filter(programa_id=programa_id, estado='DOCUMENTOS_CARGADOS')
+                .filter(programa_id=programa_id, estado='APROBADA')
                 .order_by('id')
             )
 
             if not elegibles:
                 return Response(
-                    {'detail': 'No hay postulaciones con documentos cargados para sortear.'},
+                    {'detail': 'No hay postulaciones aprobadas para sortear.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -1239,17 +1287,6 @@ class PostulacionViewSet(viewsets.GenericViewSet):
 
             Postulacion.objects.filter(id__in=ids_beneficiados).update(estado='BENEFICIADO')
             Postulacion.objects.filter(id__in=ids_no_beneficiados).update(estado='NO_BENEFICIARIO')
-
-            try:
-                programa_obj = Programa.objects.get(id=programa_id)
-                programa_obj.estado = 'CULMINADO'
-                programa_obj.save(update_fields=['estado'])
-                Etapa.objects.filter(programa_id=programa_id, finalizada=False).update(
-                    finalizada=True,
-                    fecha_finalizacion=timezone.now(),
-                )
-            except Programa.DoesNotExist:
-                pass
 
         # Construir resultado con nombres
         def _build_result(postulaciones, estado_label):
