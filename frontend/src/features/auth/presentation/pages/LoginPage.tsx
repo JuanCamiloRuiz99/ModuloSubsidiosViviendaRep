@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function LoginPage() {
@@ -139,6 +140,14 @@ export default function LoginPage() {
                 'Ingresar al Sistema'
               )}
             </button>
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-alcaldia-blue hover:text-alcaldia-dark font-medium"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </form>
         </div>
 

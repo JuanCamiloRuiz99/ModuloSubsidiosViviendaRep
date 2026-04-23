@@ -6,7 +6,7 @@ Requiere Django y la BD de pruebas.
 import pytest
 from django.core import signing
 from rest_framework.test import APIClient
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
 
 from infrastructure.database.usuarios_models import UsuarioSistema
 from infrastructure.database.roles_models import Rol
@@ -116,6 +116,77 @@ class TestLoginEndpoint:
             format="json",
         )
         assert resp.status_code == 403
+
+
+class TestPasswordRecoveryEndpoint:
+    def test_solicitar_recuperacion_envia_correo(self, anon_client, admin_user, monkeypatch):
+        sent = {}
+
+        def fake_send_mail(subject, message, from_email, recipient_list, fail_silently=False):
+            sent['subject'] = subject
+            sent['message'] = message
+            sent['from_email'] = from_email
+            sent['recipient_list'] = recipient_list
+            return 1
+
+        monkeypatch.setattr(
+            'presentation.views.usuario_viewset.send_mail',
+            fake_send_mail,
+        )
+
+        resp = anon_client.post(
+            "/api/usuarios/solicitar_recuperacion/",
+            {"correo": "admin_test@test.com"},
+            format="json",
+        )
+
+        assert resp.status_code == 200
+        assert resp.json().get('success') is True
+        assert sent['recipient_list'] == ['admin_test@test.com']
+        assert 'Recuperación de contraseña' in sent['subject']
+        assert 'admin_test@test.com' not in sent['message'] or 'token' in sent['message']
+
+    def test_solicitar_recuperacion_email_invalido(self, anon_client):
+        resp = anon_client.post(
+            "/api/usuarios/solicitar_recuperacion/",
+            {"correo": "no-valido"},
+            format="json",
+        )
+        assert resp.status_code == 400
+
+    def test_restablecer_contraseña_exitoso(self, anon_client, admin_user):
+        token = signing.dumps(
+            {"correo": admin_user.correo},
+            salt="password-reset",
+        )
+        resp = anon_client.post(
+            "/api/usuarios/restablecer_contraseña/",
+            {"token": token, "password": "NewPass123*"},
+            format="json",
+        )
+        assert resp.status_code == 200
+        admin_user.refresh_from_db()
+        assert check_password("NewPass123*", admin_user.password_hash)
+
+    def test_restablecer_contraseña_token_invalido(self, anon_client):
+        resp = anon_client.post(
+            "/api/usuarios/restablecer_contraseña/",
+            {"token": "token_malo", "password": "NewPass123*"},
+            format="json",
+        )
+        assert resp.status_code == 400
+
+    def test_restablecer_contraseña_password_corto(self, anon_client, admin_user):
+        token = signing.dumps(
+            {"correo": admin_user.correo},
+            salt="password-reset",
+        )
+        resp = anon_client.post(
+            "/api/usuarios/restablecer_contraseña/",
+            {"token": token, "password": "short"},
+            format="json",
+        )
+        assert resp.status_code == 400
 
 
 # ──────── Usuarios CRUD ────────

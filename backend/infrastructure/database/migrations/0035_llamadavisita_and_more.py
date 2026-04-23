@@ -11,17 +11,12 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='LlamadaVisita',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('fecha_llamada', models.DateField()),
-                ('hora_llamada', models.TimeField()),
-                ('resultado', models.CharField(choices=[('CONTESTADA', 'Contestada'), ('NO_CONTESTA', 'No contesta'), ('BUZON', 'Buzón de voz'), ('NUMERO_EQUIVOCADO', 'Número equivocado'), ('NUMERO_FUERA_SERVICIO', 'Número fuera de servicio')], max_length=30)),
-                ('observaciones', models.TextField(blank=True, default='')),
-                ('fecha_registro', models.DateTimeField(auto_now_add=True)),
-                ('activo_logico', models.BooleanField(default=True)),
-            ],
+        migrations.RenameModel(
+            old_name='LlamadaPostulacion',
+            new_name='LlamadaVisita',
+        ),
+        migrations.AlterModelOptions(
+            name='llamadavisita',
             options={
                 'verbose_name': 'Llamada de Visita',
                 'verbose_name_plural': 'Llamadas de Visita',
@@ -29,38 +24,9 @@ class Migration(migrations.Migration):
                 'ordering': ['-fecha_llamada', '-hora_llamada'],
             },
         ),
-        migrations.RemoveIndex(
-            model_name='llamadapostulacion',
-            name='idx_llamada_visita',
-        ),
         migrations.AlterField(
             model_name='postulacion',
             name='estado',
             field=models.CharField(choices=[('REGISTRADA', 'Registrada'), ('EN_REVISION', 'En revisión'), ('SUBSANACION', 'Subsanación'), ('VISITA_PENDIENTE', 'Visita pendiente'), ('VISITA_PROGRAMADA', 'Visita programada'), ('VISITA_REALIZADA', 'Visita realizada'), ('DOCUMENTOS_INCOMPLETOS', 'Documentos incompletos'), ('DOCUMENTOS_CARGADOS', 'Documentos cargados'), ('BENEFICIADO', 'Beneficiado'), ('NO_BENEFICIARIO', 'No beneficiario'), ('APROBADA', 'Aprobada'), ('RECHAZADA', 'Rechazada')], default='EN_REVISION', max_length=25),
-        ),
-        migrations.AddField(
-            model_name='llamadavisita',
-            name='postulacion',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='llamadas', to='database.postulacion'),
-        ),
-        migrations.AddField(
-            model_name='llamadavisita',
-            name='usuario_llamada',
-            field=models.ForeignKey(db_column='usuario_llamada', on_delete=django.db.models.deletion.PROTECT, related_name='llamadas_realizadas', to='database.usuariosistema'),
-        ),
-        migrations.RemoveField(
-            model_name='llamadapostulacion',
-            name='postulacion',
-        ),
-        migrations.RemoveField(
-            model_name='llamadapostulacion',
-            name='usuario_llamada',
-        ),
-        migrations.AddIndex(
-            model_name='llamadavisita',
-            index=models.Index(fields=['postulacion'], name='idx_llamada_visita'),
-        ),
-        migrations.DeleteModel(
-            name='LlamadaPostulacion',
         ),
     ]

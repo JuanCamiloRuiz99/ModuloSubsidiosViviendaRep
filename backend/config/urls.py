@@ -19,6 +19,7 @@ from presentation.views.visita_etapa2_viewset import VisitaEtapa2ViewSet
 from presentation.views.visita_viewset import VisitaViewSet
 from presentation.views.documento_proceso_interno_viewset import DocumentoProcesoInternoViewSet
 from presentation.views.dashboard_view import dashboard_estadisticas
+from presentation.views.email_view import list_emails, get_email
 
 router = DefaultRouter()
 router.register(r'programas',      ProgramaViewSet,      basename='programa')
@@ -34,6 +35,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path('api/dashboard/estadisticas/', dashboard_estadisticas, name='dashboard-estadisticas'),
+    path('api/emails/', list_emails, name='list-emails'),
+    path('api/emails/<str:filename>/', get_email, name='get-email'),
 ]
 
 # Serve media files in development

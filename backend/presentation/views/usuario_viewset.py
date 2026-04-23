@@ -6,9 +6,13 @@ Implementación síncrona compatible con Django sync context.
 """
 
 import logging
-from django.utils.timezone import now
-from django.contrib.auth.hashers import check_password
+from django.conf import settings
 from django.core import signing
+from django.core.mail import send_mail
+from django.contrib.auth.hashers import check_password, make_password
+from django.utils.timezone import now
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -527,6 +531,171 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             logger.error(f"Error login: {str(e)}")
+            return Response(
+                {"error": "Error interno del servidor"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @method_decorator(csrf_exempt)
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny], throttle_classes=[AnonRateThrottle])
+    def solicitar_recuperacion(self, request) -> Response:
+        """Solicita recuperación de contraseña por correo registrado."""
+        try:
+            correo = (request.data.get("correo") or request.data.get("email") or "").lower().strip()
+            if not correo or "@" not in correo:
+                return Response(
+                    {"error": "Correo electrónico inválido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                usuario = UsuarioSistema.obtener_no_eliminados().get(correo=correo)
+            except UsuarioSistema.DoesNotExist:
+                # Responder siempre de forma genérica para no filtrar si el correo existe.
+                return Response(
+                    {
+                        "success": True,
+                        "message": "Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.",
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            if not usuario.activo:
+                return Response(
+                    {"error": "La cuenta está desactivada. Contacte al administrador."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            token = signing.dumps(
+                {"correo": correo},
+                salt="password-reset",
+            )
+            reset_url = getattr(settings, "PASSWORD_RESET_URL", None)
+            if reset_url:
+                reset_link = f"{reset_url}?token={token}"
+            else:
+                reset_link = token
+
+            asunto = "Recuperación de contraseña"
+            mensaje = (
+                f"Hola {usuario.nombre_completo},\n\n"
+                "Hemos recibido una solicitud para restablecer tu contraseña. "
+                "Si tú la solicitaste, haz clic en el siguiente enlace o copia el token en la aplicación:\n\n"
+                f"{reset_link}\n\n"
+                "Si no solicitaste este cambio, ignora este correo. "
+                "Este enlace es válido por 24 horas."
+            )
+            
+            email_sent = False
+            try:
+                send_mail(
+                    asunto,
+                    mensaje,
+                    getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@example.com"),
+                    [correo],
+                    fail_silently=False,
+                )
+                logger.info(f"Solicitud de recuperación de contraseña enviada exitosamente: {correo}")
+                email_sent = True
+            except Exception as email_error:
+                logger.error(f"Error enviando correo: {str(email_error)}")
+                # En desarrollo, continuar con el token disponible
+                if not settings.DEBUG:
+                    raise email_error
+
+            # Respuesta: en desarrollo incluir el token para pruebas
+            response_data = {
+                "success": True,
+                "message": "Si el correo está registrado, recibirás instrucciones para restablecer tu contraseña.",
+            }
+            
+            if settings.DEBUG:
+                response_data["_debug_token"] = token  # Token para pruebas en desarrollo
+                response_data["_debug_reset_link"] = reset_link
+                response_data["_email_sent"] = email_sent
+                logger.info(f"[DESARROLLO] Token de recuperación: {token}")
+
+            return Response(
+                response_data,
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f"Error solicitar_recuperacion: {str(e)}")
+            return Response(
+                {"error": "Error interno del servidor"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @method_decorator(csrf_exempt)
+    @action(detail=False, methods=["post"], permission_classes=[AllowAny], throttle_classes=[AnonRateThrottle])
+    def restablecer_contraseña(self, request) -> Response:
+        """Restablece la contraseña usando el token enviado por correo."""
+        try:
+            token = request.data.get("token", "")
+            password = request.data.get("password", "")
+
+            if not token:
+                return Response(
+                    {"error": "El token de restablecimiento es requerido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not password or len(password) < 8:
+                return Response(
+                    {"error": "La contraseña debe tener mínimo 8 caracteres"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                data = signing.loads(
+                    token,
+                    salt="password-reset",
+                    max_age=getattr(settings, "PASSWORD_RESET_TOKEN_MAX_AGE", 60 * 60 * 24),
+                )
+            except signing.SignatureExpired:
+                return Response(
+                    {"error": "El token ha expirado"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            except signing.BadSignature:
+                return Response(
+                    {"error": "El token de restablecimiento no es válido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            correo = data.get("correo")
+            if not correo:
+                return Response(
+                    {"error": "Token inválido"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                usuario = UsuarioSistema.obtener_no_eliminados().get(correo=correo)
+            except UsuarioSistema.DoesNotExist:
+                return Response(
+                    {"error": "El usuario no existe"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            if not usuario.activo:
+                return Response(
+                    {"error": "La cuenta está desactivada. Contacte al administrador."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            usuario.password_hash = make_password(password)
+            usuario.save()
+            logger.info(f"Contraseña restablecida para usuario: {usuario.id_usuario}")
+
+            return Response(
+                {"success": True, "message": "La contraseña ha sido restablecida correctamente."},
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            logger.error(f"Error restablecer_contraseña: {str(e)}")
             return Response(
                 {"error": "Error interno del servidor"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

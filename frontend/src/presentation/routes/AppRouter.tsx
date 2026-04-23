@@ -11,7 +11,7 @@ import MisVisitasRoutes from '../../features/visitas/presentation/routes/MisVisi
 import MisPostulacionesRoutes from '../../features/postulantes/presentation/routes/MisPostulacionesRoutes';
 import GestionDocumentalInternaRoutes from '../../features/postulaciones/presentation/routes/GestionDocumentalInternaRoutes';
 import { FormularioPublicoPage, RegistroHogarPage } from '../../features/programas/presentation/pages';
-import { LoginPage, PrivateRoute } from '../../features/auth';
+import { LoginPage, PrivateRoute, ForgotPasswordPage, ResetPasswordPage } from '../../features/auth';
 import { MainLayout } from '../../shared/presentation/components';
 import { ErrorBoundary } from '../../shared/presentation/components/ErrorBoundary';
 import HomePage from '../pages/HomePage';
@@ -27,6 +27,8 @@ export default function AppRouter() {
 
         {/* Ruta de login */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Rutas publicas para ciudadanos — sin MainLayout ni autenticacion */}
         <Route path="/formulario/:etapaId"    element={<FormularioPublicoPage />} />

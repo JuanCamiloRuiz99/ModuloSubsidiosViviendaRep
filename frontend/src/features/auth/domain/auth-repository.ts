@@ -19,6 +19,22 @@ export interface LoginResult {
   };
 }
 
+export interface PasswordRecoveryRequest {
+  correo: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
+export interface PasswordRecoveryResult {
+  success: boolean;
+  message: string;
+}
+
 export interface AuthRepository {
   login(credentials: LoginCredentials): Promise<LoginResult>;
+  requestPasswordReset(request: PasswordRecoveryRequest): Promise<PasswordRecoveryResult>;
+  resetPassword(request: ResetPasswordRequest): Promise<PasswordRecoveryResult>;
 }

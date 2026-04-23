@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 from decouple import config
 
@@ -177,3 +178,20 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Content-Disposition']
+
+# Email settings for password recovery and notifications
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default='django.core.mail.backends.filebased.EmailBackend',
+)
+# En producción, usar SMTP real:
+# EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend'
+EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'emails')  # Los correos se guardan en backend/emails/
+EMAIL_HOST = config('EMAIL_HOST', default='localhost')
+EMAIL_PORT = config('EMAIL_PORT', default=25, cast=int)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@localhost')
+PASSWORD_RESET_TOKEN_MAX_AGE = config('PASSWORD_RESET_TOKEN_MAX_AGE', default=86400, cast=int)
+PASSWORD_RESET_URL = config('PASSWORD_RESET_URL', default='http://localhost:5173/reset-password')

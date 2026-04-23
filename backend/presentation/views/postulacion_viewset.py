@@ -34,6 +34,7 @@ from infrastructure.database.models import (
     Visita,
 )
 from infrastructure.database.usuarios_models import UsuarioSistema
+from domain.postulantes.postulacion import EstadoPostulacion
 
 
 class ConsultaPublicaThrottle(AnonRateThrottle):
@@ -133,6 +134,8 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         Soporta filtros opcionales por query params:
           ?estado=REGISTRADA
           ?programa_id=6
+        
+        NOTA: Los funcionarios solo ven postulaciones en estado EN_REVISION o SUBSANACION
         """
         qs = (
             GestionHogarEtapa1.objects
@@ -141,6 +144,13 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             .annotate(total_miembros=Count('miembros'))
             .order_by('-fecha_radicado')
         )
+
+        # Si el usuario es FUNCIONARIO (id_rol_id = 2), filtrar automáticamente
+        # para que solo vea postulaciones en estado EN_REVISION o SUBSANACION
+        if request.user and request.user.id_rol_id == 2:
+            qs = qs.filter(
+                postulacion__estado__in=[EstadoPostulacion.EN_REVISION, EstadoPostulacion.SUBSANACION]
+            )
 
         estado = request.query_params.get('estado')
         if estado:
@@ -251,6 +261,8 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         Devuelve el detalle completo de un registro del hogar, incluyendo
         todos los campos del predio, los datos del ciudadano y los miembros del hogar.
         GET /api/postulaciones/registro-hogar/{pk}/
+        
+        NOTA: Los funcionarios solo pueden ver postulaciones en estado EN_REVISION o SUBSANACION
         """
         try:
             g = (
@@ -261,6 +273,15 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             )
         except GestionHogarEtapa1.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validar permisos: FUNCIONARIO solo puede ver postulaciones EN_REVISION o SUBSANACION
+        if request.user and request.user.id_rol_id == 2:
+            p = g.postulacion
+            if not p or p.estado not in [EstadoPostulacion.EN_REVISION, EstadoPostulacion.SUBSANACION]:
+                return Response(
+                    {'detail': 'No tienes permiso para ver esta postulación.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
         c = g.ciudadano
         p = g.postulacion
@@ -442,6 +463,8 @@ class PostulacionViewSet(viewsets.GenericViewSet):
                 - Si hay campos_incorrectos O documentos_incorrectos → SUBSANACION.
                 - Si no hay ninguno incorrecto → APROBADA.
                 PATCH /api/postulaciones/registro-hogar/{pk}/actualizar/
+                
+                NOTA: Los funcionarios solo pueden actualizar postulaciones en estado EN_REVISION o SUBSANACION
         """
         try:
             g = (
@@ -451,6 +474,15 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             )
         except GestionHogarEtapa1.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validar permisos: FUNCIONARIO solo puede actualizar postulaciones EN_REVISION o SUBSANACION
+        if request.user and request.user.id_rol_id == 2:
+            p = g.postulacion
+            if not p or p.estado not in [EstadoPostulacion.EN_REVISION, EstadoPostulacion.SUBSANACION]:
+                return Response(
+                    {'detail': 'No tienes permiso para actualizar esta postulación. Solo puedes actualizar postulaciones en revisión o subsanación.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
         data = request.data
 
@@ -519,6 +551,8 @@ class PostulacionViewSet(viewsets.GenericViewSet):
         Permite editar todos los campos del hogar (no solo revisión interna).
         PATCH /api/postulaciones/registro-hogar/{pk}/editar-completo/
         Body: campos del InfoHogarSubmitSerializer
+        
+        NOTA: Los funcionarios solo pueden editar postulaciones en estado EN_REVISION o SUBSANACION
         """
         try:
             g = (
@@ -528,6 +562,15 @@ class PostulacionViewSet(viewsets.GenericViewSet):
             )
         except GestionHogarEtapa1.DoesNotExist:
             return Response({'detail': 'No encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validar permisos: FUNCIONARIO solo puede editar postulaciones EN_REVISION o SUBSANACION
+        if request.user and request.user.id_rol_id == 2:
+            p = g.postulacion
+            if not p or p.estado not in [EstadoPostulacion.EN_REVISION, EstadoPostulacion.SUBSANACION]:
+                return Response(
+                    {'detail': 'No tienes permiso para editar esta postulación. Solo puedes editar postulaciones en revisión o subsanación.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
         serializer = InfoHogarSubmitSerializer(data=request.data, partial=True)
         if not serializer.is_valid():
