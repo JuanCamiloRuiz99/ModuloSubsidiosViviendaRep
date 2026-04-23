@@ -20,8 +20,10 @@ import os
 import sys
 import django
 from datetime import date, timedelta
+from seed_setup import setup_django_path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+setup_django_path()
 django.setup()
 
 from django.utils import timezone

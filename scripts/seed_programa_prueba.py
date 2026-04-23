@@ -6,8 +6,10 @@ para probar el filtro por programa en el panel de gestión de visitas.
 import os
 import sys
 import django
+from seed_setup import setup_django_path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+setup_django_path()
 django.setup()
 
 from infrastructure.database.models import (

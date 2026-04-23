@@ -13,11 +13,11 @@ import os
 import sys
 import django
 from datetime import date
+from seed_setup import setup_django_path
 
 # ── Django setup ──────────────────────────────────────────────────────────── #
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-backend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'backend')
-sys.path.insert(0, backend_dir)
+setup_django_path()
 django.setup()
 
 from infrastructure.database.models import (

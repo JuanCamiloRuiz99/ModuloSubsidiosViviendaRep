@@ -7,10 +7,11 @@ Ejecutar:
 import os
 import sys
 import django
+from seed_setup import setup_django_path
 
 # Configurar Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+setup_django_path()
 django.setup()
 
 from django.contrib.auth.hashers import make_password

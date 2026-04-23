@@ -18,8 +18,10 @@ duplicarlo.
 
 import os
 import django
+from seed_setup import setup_django_path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+setup_django_path()
 django.setup()
 
 from infrastructure.database.models import (

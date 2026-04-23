@@ -3,9 +3,10 @@
 import os, sys, django
 from datetime import date
 from decimal import Decimal
+from seed_setup import setup_django_path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'backend'))
+setup_django_path()
 django.setup()
 
 from infrastructure.database.models import (
